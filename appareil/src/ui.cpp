@@ -951,10 +951,10 @@ void ui::dessiner(uint32_t m) {
     uint32_t vu = millis() - photoDepuis;
     if (vu < 3500 && (!photoPlan || nbPlans <= 3)) {
       float a = clampf((3500 - vu) / 800.f, 0, 1);
-      const char *txt = photoPlan ? "glisse haut/bas : zoom · touche : retour" : "touche pour revenir";
+      const char *txt = photoPlan ? "glisse : zoom · touche : retour" : "touche pour revenir";
       int w = largeur(F_PETIT, txt) + 24;
-      g->fillRoundRect(CENTRE - w / 2, 36, w, 26, 13, attenue(0x18E3, a));
-      texteCentre(F_PETIT, txt, CENTRE, 54, attenue(BLANC, a));
+      g->fillRoundRect(CENTRE - w / 2, 66, w, 26, 13, attenue(0x18E3, a));
+      texteCentre(F_PETIT, txt, CENTRE, 84, attenue(BLANC, a));
     }
     if (photoAttenteDepuis && m - photoAttenteDepuis < 12000) {
       float a0 = fmodf((m - photoAttenteDepuis) * 0.4f, 360);
