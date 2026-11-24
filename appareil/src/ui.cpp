@@ -20,8 +20,8 @@
 
 static const int R = 233;          // rayon de l'écran
 static const int HAUT_CARTE = 116; // haut de la carte ouverte
-static const int BAS_VISIBLE = 424;
-static const int COL_X = 68, COL_W = 330;
+static const int BAS_VISIBLE = 400;   // en dessous, l'écran rond devient trop étroit
+static const int COL_X = 83, COL_W = 300;   // tient dans le cercle sur toute la zone visible
 
 Carte::~Carte() {
   for (auto &p : pages)
@@ -298,7 +298,7 @@ static void miseEnPage() {
           break;
         }
         case B_IMAGE: {
-          int w = b.img ? b.iw : 280, h = b.img ? b.ih : 158;
+          int w = b.img ? std::min(b.iw, COL_W) : 280, h = b.img ? b.ih : 158;
           Elem e{E_IMAGE, CENTRE - w / 2, p.hauteur, w, h};
           e.bloc = &b;
           p.elems.push_back(e);
@@ -308,9 +308,9 @@ static void miseEnPage() {
         }
         case B_CHOIX: {
           for (auto &it : b.items) {
-            auto lignes = couper(F_TEXTE, it, 260, 2);
+            auto lignes = couper(F_TEXTE, it, 250, 2);
             int h = lignes.size() > 1 ? 66 : 48;
-            Elem e{E_PILULE, CENTRE - 145, p.hauteur, 290, h};
+            Elem e{E_PILULE, CENTRE - 140, p.hauteur, 280, h};
             e.s = lignes[0]; e.s2 = lignes.size() > 1 ? lignes[1] : ""; e.bloc = &b;
             e.choisi = (choixFait == it);
             e.code = &it - &b.items[0];
@@ -712,7 +712,20 @@ static void dessinerPage(int idx, int dx, int base) {
         break;
       case E_IMAGE: {
         const Bloc *b = e.bloc;
-        if (b && b->img) g->draw16bitRGBBitmap(x, y, b->img, b->iw, b->ih);
+        if (b && b->img) {
+          int w = std::min(b->iw, COL_W), h = b->ih, ox = x + (e.w - w) / 2;
+          if (w == b->iw) g->draw16bitRGBBitmap(ox, y, b->img, w, h);
+          else for (int r = 0; r < h; r++) g->draw16bitRGBBitmap(ox, y + r, b->img + r * b->iw + (b->iw - w) / 2, w, 1);
+          // coins arrondis
+          const int rc = 12;
+          for (int j = 0; j < rc; j++)
+            for (int i = 0; i < rc; i++) {
+              int dx = rc - i, dy = rc - j;
+              if (dx * dx + dy * dy <= rc * rc) continue;
+              g->drawPixel(ox + i, y + j, FOND_CARTE); g->drawPixel(ox + w - 1 - i, y + j, FOND_CARTE);
+              g->drawPixel(ox + i, y + h - 1 - j, FOND_CARTE); g->drawPixel(ox + w - 1 - i, y + h - 1 - j, FOND_CARTE);
+            }
+        }
         else {
           g->fillRoundRect(x, y, e.w, e.h, 14, 0x10A2);
           float ph = (millis() % 1200) / 1200.f;
@@ -734,15 +747,15 @@ static void dessinerPage(int idx, int dx, int base) {
         g->fillRoundRect(x, y + 6, bw, 40, 10, e.c);
         texteCentre(F_FORT, e.s, x + bw / 2, y + 33, e.c2);
         String dir = e.s2;
-        int place = e.w - bw - 96;
+        int place = e.w - bw - 70;
         while (dir.length() > 3 && largeur(F_SOUS, dir) > place) dir.remove(dir.length() - 1);
-        if (dir != e.s2) dir += ".";
+        if (dir != e.s2) { while (dir.length() > 3 && largeur(F_SOUS, dir + "...") > place) dir.remove(dir.length() - 1); dir += "..."; }
         texte(F_SOUS, dir, x + bw + 12, y + 24, BLANC);
         if (e.bloc) texte(F_PETIT, String("à ") + e.bloc->h, x + bw + 12, y + 44, GRIS);
         String mn = e.code <= 0 ? "0" : String(e.code);
         int wm = largeur(F_GRAND, mn);
-        texte(F_GRAND, mn, x + e.w - 40 - wm, y + 36, e.code <= 2 ? 0xFE60 : BLANC);
-        texte(F_PETIT, "min", x + e.w - 34, y + 36, GRIS);
+        texte(F_GRAND, mn, x + e.w - 26 - wm / 2, y + 31, e.code <= 2 ? 0xFE60 : BLANC);
+        texteCentre(F_PETIT, "min", x + e.w - 26, y + 48, GRIS);
         break;
       }
       case E_ICONE:
@@ -927,6 +940,21 @@ void ui::dessiner(uint32_t m) {
       if (dx > 4) dessinerPage(page - 1, dx - ECRAN, top);
       if (dx < -4) dessinerPage(page + 1, dx + ECRAN, top);
     }
+    // barre de défilement sur le bord droit + flèche quand il reste à lire
+    int mxd = maxDefil();
+    bool flecheBas = false;
+    if (mxd > 6 && carte->type != "heure" && tirage < 2) {
+      auto arc = [&](float a, float b, uint16_t c) {
+        if (a < 0 && b > 0) { g->fillArc(CENTRE, CENTRE, R - 7, R - 11, a + 360, 359.9f, c); g->fillArc(CENTRE, CENTRE, R - 7, R - 11, 0, b, c); }
+        else g->fillArc(CENTRE, CENTRE, R - 7, R - 11, a < 0 ? a + 360 : a, b < 0 ? b + 360 : b, c);
+      };
+      float vue = BAS_VISIBLE - HAUT_CARTE, frac = vue / (vue + mxd), pos = clampf(defil / mxd, 0, 1);
+      const float a0 = -22, a1 = 38, span = a1 - a0;
+      float th = std::max(8.f, span * frac), st = a0 + (span - th) * pos;
+      arc(a0, a1, 0x2124);
+      arc(st, st + th, attenue(accent, 0.85f));
+      flecheBas = defil < mxd - 4;
+    }
     // bords : la carte glisse sous le visage, et s'estompe en bas
     if (top < HAUT_CARTE + 1) g->fillRect(0, 0, ECRAN, top, NOIR);
     g->fillRect(0, top - 1, ECRAN, 1, TRAIT);
@@ -934,6 +962,10 @@ void ui::dessiner(uint32_t m) {
     g->fillRoundRect(CENTRE - 24, top + 9, 48, 5, 3, 0x4228);
     for (int k2 = 0; k2 < 6; k2++) g->fillRect(0, BAS_VISIBLE + k2 * 3, ECRAN, 3, melange(NOIR, FOND_CARTE, 0.85f - k2 * 0.15f));
     g->fillRect(0, BAS_VISIBLE + 18, ECRAN, ECRAN, NOIR);
+    if (flecheBas && !(carte->pages.size() > 1 && page == 0 && m - carteOuverteA < 6000 && nbCartesVues <= 4)) {
+      float a = 0.5f + 0.4f * sinf(m * 0.006f);
+      g->fillTriangle(CENTRE - 10, 421, CENTRE + 10, 421, CENTRE, 431, attenue(accent, a));
+    }
     // points de pages
     int n = carte->pages.size();
     if (n > 1 && carte->type != "heure") {
