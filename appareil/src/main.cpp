@@ -109,10 +109,9 @@ static void carteConfig() {
   Carte *c = new Carte();
   c->type = "config"; c->locale = true;
   std::vector<Bloc> p;
-  p.push_back(bloc(B_SOUS, "Installation"));
-  p.push_back(bloc(B_TITRE, "Connecte ton téléphone"));
-  p.push_back(bloc(B_TEXTE, "Scanne ce code pour rejoindre mon Wi-Fi :"));
   p.push_back(bloc(B_QR, "WIFI:T:WPA;S:" + reseau::nomAP() + ";P:" + reseau::mdpAP() + ";;"));
+  p.push_back(bloc(B_TITRE, "Connecte ton téléphone"));
+  p.push_back(bloc(B_TEXTE, "Scanne ce code avec l'appareil photo pour rejoindre mon Wi-Fi."));
   p.push_back(bloc(B_LIGNE, "", "Réseau", reseau::nomAP()));
   p.push_back(bloc(B_LIGNE, "", "Mot de passe", reseau::mdpAP()));
   p.push_back(bloc(B_TEXTE, "La page de réglages s'ouvre toute seule. Sinon, va sur 192.168.4.1 et ajoute ton Wi-Fi."));

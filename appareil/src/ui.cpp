@@ -1,5 +1,6 @@
 // Nexxus — visage animé, cartes d'infos et gestes sur l'écran rond
 #include "ui.h"
+#include "config.h"
 #include <Arduino_GFX.h>
 #include <mutex>
 #include <math.h>
@@ -187,7 +188,7 @@ static void ciblesPour(Humeur h) {
     case H_FACHE: v.tInt = 0.46f; v.h = 112; break;
     case H_SURPRIS: v.w = 120; v.h = 150; v.r = 56; break;
     case H_PERDU: v.droite = 0.68f; v.tInt = 0.18f; v.lx = -8; break;
-    case H_CLIN: v.droite = 0.07f; v.joue = 0.3f; break;
+    case H_CLIN: v.droite = 0.07f; break;
     case H_DORT: v.h = 10; v.r = 5; v.ly = 24; v.dort = 1; break;
     case H_AMOUR: v.coeur = 1; break;
     default: break;
@@ -240,7 +241,7 @@ static void miseEnPage() {
   if (!carte) return;
   for (auto &blocs : carte->pages) {
     Page p;
-    p.hauteur = 26;
+    p.hauteur = 40;
     TypeBloc prec = B_TITRE;
     bool premier = true;
     for (auto &b : blocs) {
@@ -442,7 +443,7 @@ void ui::minuteurs(int nb, uint32_t restant, uint32_t total, const String &nom) 
 // ------------------------------------------------------------------ gestes
 static bool appui = false, deplace = false, longFait = false;
 static int axe = 0;  // 0 rien, 1 vertical, 2 horizontal
-static int x0, y0, xp, yp;
+static int xDeb, yDeb, xp, yp;
 static uint32_t t0, tp;
 static float vx = 0, vy = 0, defilDepart = 0;
 
@@ -478,7 +479,7 @@ void ui::toucher(int x, int y, bool presse, uint32_t t) {
   VERROU;
   if (presse && !appui) {
     appui = true; deplace = false; longFait = false; axe = 0;
-    x0 = xp = x; y0 = yp = y; t0 = tp = t; vx = vy = 0;
+    xDeb = xp = x; yDeb = yp = y; t0 = tp = t; vx = vy = 0;
     defilVit = 0; defilDepart = defil;
     derniereAction = millis();
     return;
@@ -488,7 +489,7 @@ void ui::toucher(int x, int y, bool presse, uint32_t t) {
     vx = vx * 0.6f + 0.4f * (x - xp) / dt;
     vy = vy * 0.6f + 0.4f * (y - yp) / dt;
     xp = x; yp = y; tp = t;
-    int dx = x - x0, dy = y - y0;
+    int dx = x - xDeb, dy = y - yDeb;
     if (!deplace && dx * dx + dy * dy > 144) {
       deplace = true;
       bool pages = carte && carteVisible && carte->pages.size() > 1;
@@ -514,9 +515,9 @@ void ui::toucher(int x, int y, bool presse, uint32_t t) {
   if (!presse && appui) {
     appui = false;
     derniereAction = millis();
-    int dx = xp - x0, dy = yp - y0;
+    int dx = xp - xDeb, dy = yp - yDeb;
     if (!deplace) {
-      if (!longFait) tape(x0, y0);
+      if (!longFait) tape(xDeb, yDeb);
       return;
     }
     if (carte && carteVisible) {
@@ -810,7 +811,7 @@ void ui::dessiner(uint32_t m) {
   sousTitreAlpha = approche(sousTitreAlpha, st ? 1 : 0, 8, dt);
   float respire = sinf(m * 0.0016f) * 3;
   float s = 1 - 0.66f * pp;
-  float cy = CENTRE - 16 * sousTitreAlpha + respire * (1 - pp);
+  float cy = CENTRE - 42 * sousTitreAlpha + respire * (1 - pp);
   cy = cy + (62 - cy) * pp;
 
   if (carte && carteY < ECRAN) {
@@ -841,7 +842,7 @@ void ui::dessiner(uint32_t m) {
     // astuces les premières fois
     uint32_t depuis = m - carteOuverteA;
     if (nbCartesVues <= 3 && depuis < 5000 && carte->type != "config" && carte->type != "minuteur")
-      texteCentre(F_PETIT, "glisse vers le bas pour fermer", CENTRE, top + 32, attenue(GRIS, depuis < 4000 ? 1 : (5000 - depuis) / 1000.f));
+      texteCentre(F_PETIT, "glisse vers le bas pour fermer", CENTRE, top + 31, attenue(GRIS, depuis < 4000 ? 1 : (5000 - depuis) / 1000.f));
     if (n > 1 && page == 0 && depuis < 6000 && nbCartesVues <= 4)
       texteCentre(F_PETIT, "glisse sur le côté »", CENTRE, 430, attenue(accent, 0.8f));
   }
@@ -851,12 +852,12 @@ void ui::dessiner(uint32_t m) {
 
   // sous-titres
   if (sousTitreAlpha > 0.03f && !(carte && carteVisible)) {
-    auto lignes = couper(F_TEXTE, sousTitreTxt, 300, 3);
-    int y = 352 + (3 - (int)lignes.size()) * 12;
+    auto lignes = couper(F_TEXTE, sousTitreTxt, 284, 3);
+    int y = 362 + (3 - (int)lignes.size()) * 10;
     for (auto &l : lignes) { texteCentre(F_TEXTE, l, CENTRE, y, attenue(BLANC, sousTitreAlpha)); y += 26; }
   }
   // astuce : revoir la dernière carte
-  if (!carteVisible && derniere && (int32_t)(astuceRouvrirFin - m) > 0 && !st) {
+  if (!carteVisible && derniere && (int32_t)(astuceRouvrirFin - m) > 0 && !st && !nbMinuteurs) {
     float a = clampf((astuceRouvrirFin - m) / 1000.f, 0, 1);
     g->fillTriangle(CENTRE - 10, 412, CENTRE + 10, 412, CENTRE, 402, attenue(GRIS, a));
     texteCentre(F_PETIT, "glisse vers le haut pour revoir", CENTRE, 432, attenue(GRIS, a));
