@@ -1,0 +1,42 @@
+name: firmware
+on:
+  push:
+    branches: [main]
+    paths: ['appareil/**', '.github/workflows/firmware.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: { group: firmware, cancel-in-progress: true }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('appareil/platformio.ini') }}
+      - run: pip install -U platformio esptool==4.8.1
+      - name: Compilation
+        run: |
+          set -o pipefail
+          cd appareil && pio run 2>&1 | tee ../build.log
+      - name: Image complète
+        run: |
+          B=appareil/.pio/build/nexxus
+          A0=$(find ~/.platformio/packages -name boot_app0.bin | head -1)
+          esptool.py --chip esp32s3 merge_bin -o $B/nexxus-complet.bin --flash_mode keep --flash_freq keep --flash_size 16MB \
+            0x0 $B/bootloader.bin 0x8000 $B/partitions.bin 0xe000 "$A0" 0x10000 $B/firmware.bin
+      - name: Publication
+        if: always()
+        run: |
+          mkdir out
+          cp build.log out/ 2>/dev/null || true
+          cp appareil/.pio/build/nexxus/firmware.bin out/nexxus-maj.bin 2>/dev/null || true
+          cp appareil/.pio/build/nexxus/nexxus-complet.bin out/ 2>/dev/null || true
+          echo "${{ github.sha }} ${{ job.status }}" > out/STATUS
+          cd out && git init -q && git checkout -q -b firmware && git add -A
+          git -c user.name=ci -c user.email=ci@nexxus.pm commit -qm "build ${{ github.sha }} ${{ job.status }}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" firmware
