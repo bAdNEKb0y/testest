@@ -1,0 +1,35 @@
+// Nexxus — réglages gardés dans la mémoire flash (survivent aux redémarrages et aux mises à jour)
+#pragma once
+#include <Arduino.h>
+#include <vector>
+
+struct Reseau { String ssid, mdp; };
+
+struct Reglages {
+  String nom = "Nexxus";
+  String prenom = "";
+  String serveur = "";        // ex. https://nexxus.pm/relay.php
+  String code = "";           // code secret du boîtier (le même que $CODE_APPAREIL)
+  String style = "pote";      // pote, majordome, sarcastique, prof
+  String voix = "fr-FR-RemyMultilingualNeural";
+  float debit = 1.0f;
+  uint32_t couleur = 0x35E0FF;
+  int luminosite = 200;       // 10..255
+  int volume = 70;            // 0..100
+  int micro = 30;             // gain des micros en dB (18..37)
+  int veille = 5;             // minutes avant d'assombrir l'écran (0 = jamais)
+  int nuitDebut = 22, nuitFin = 7;
+  bool nuit = true;           // mode nuit (visage endormi, écran sombre)
+  bool sousTitres = true;
+  String pin;                 // code à 6 chiffres pour la page de réglages et le Bluetooth
+  std::vector<Reseau> reseaux;
+  int astuces = 0;            // combien de fois on a déjà montré les astuces
+};
+
+extern Reglages R;
+void chargerReglages();
+void sauverReglages();
+void ajouterReseau(const String &ssid, const String &mdp);
+void oublierReseau(const String &ssid);
+void reinitialiserTout();
+uint16_t couleur565(uint32_t rgb);
