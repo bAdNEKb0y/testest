@@ -61,12 +61,14 @@ button.second{background:#1a222d;color:var(--t)}button.danger{background:#2a1416
 </section>
 
 <section><h2>Écran</h2>
+<label>Forme des yeux</label><select id="forme"><option value="0">Arrondis</option><option value="1">Ronds</option><option value="2">Carrés</option><option value="3">Fins</option><option value="4">Grands</option></select>
+<label>Couleurs toutes prêtes</label><div class="puces" id="palette"></div>
 <div class="ligne"><div><label>Couleur des yeux</label><input type="color" id="couleur"></div><div><label>Luminosité <span id="vluminosite"></span></label><input type="range" id="luminosite" min="10" max="255"></div></div>
 <label>Mise en veille après (minutes, 0 = jamais)</label><input type="number" id="veille" min="0" max="120">
 <label><input type="checkbox" id="nuit" style="width:auto"> Mode nuit (il dort et l'écran baisse)</label>
 <div class="ligne"><div><label>de</label><input type="number" id="nuit_debut" min="0" max="23"></div><div><label>à</label><input type="number" id="nuit_fin" min="0" max="23"></div></div>
 <label><input type="checkbox" id="sous_titres" style="width:auto"> Sous-titres quand il parle</label>
-<p style="margin-top:14px"><button onclick="sauver(['couleur','luminosite','veille','nuit','nuit_debut','nuit_fin','sous_titres'])">Enregistrer</button></p>
+<p style="margin-top:14px"><button onclick="sauver(['forme','couleur','luminosite','veille','nuit','nuit_debut','nuit_fin','sous_titres'])">Enregistrer</button></p>
 </section>
 
 <section><h2>Wi-Fi</h2>
@@ -115,5 +117,7 @@ function maj(){const f=$('fichier').files[0];if(!f)return toast('Choisis le fich
 async function etat(){try{const e=await api('/api/etat');const c=[['Wi-Fi',e.wifi||'—'],['Adresse',e.ip||'—'],['Batterie',e.batterie],['Cerveau',e.cerveau],['Version',e.version],['Bluetooth',e.bluetooth]];
  $('etat').innerHTML='';c.forEach(([k,v])=>{const d=document.createElement('div');const b=document.createElement('b');b.textContent=k;d.append(b,document.createTextNode(v));$('etat').append(d)});
  $('sous').textContent=e.config?'Mode installation : ajoute ton Wi-Fi ci-dessous':'Réglages du boîtier'}catch(e){}}
+[['Cyan','#35e0ff'],['Vert','#4ade80'],['Violet','#a78bfa'],['Rose','#ff6fb5'],['Orange','#ffa94d'],['Blanc','#f1f5f9'],['Rouge','#ff5b5b'],['Jaune','#ffe14d']].forEach(([n,c])=>{const b=document.createElement('button');b.textContent=n;b.style.borderLeft='14px solid '+c;b.onclick=()=>{$('couleur').value=c;sauver(['couleur','forme'])};$('palette').append(b)});
+$('forme').addEventListener('change',()=>sauver(['forme']));
 api('/api/reglages').then(remplir);etat();setInterval(etat,5000);
 </script></body></html>)HTML";

@@ -41,6 +41,7 @@ namespace ui {
   void niveau(float v);                         // volume de la voix ou du micro, 0..1
   void sousTitre(const String &t, uint32_t dureeMs = 6000);
   void couleurYeux(uint16_t c);
+  void formeYeux(int f);                        // 0 arrondis, 1 ronds, 2 carrés, 3 fins, 4 grands
 
   void montrerCarte(Carte *c);                  // prend possession de la carte
   void fermerCarte();

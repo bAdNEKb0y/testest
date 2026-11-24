@@ -20,6 +20,7 @@ void chargerReglages() {
   R.voix = P.getString("voix", R.voix);
   R.debit = P.getFloat("debit", R.debit);
   R.couleur = P.getUInt("couleur", R.couleur);
+  R.forme = P.getInt("forme", R.forme);
   R.luminosite = P.getInt("lum", R.luminosite);
   R.volume = P.getInt("volume", R.volume);
   R.micro = P.getInt("micro", R.micro);
@@ -52,6 +53,7 @@ void sauverReglages() {
   P.putString("voix", R.voix);
   P.putFloat("debit", R.debit);
   P.putUInt("couleur", R.couleur);
+  P.putInt("forme", R.forme);
   P.putInt("lum", R.luminosite);
   P.putInt("volume", R.volume);
   P.putInt("micro", R.micro);

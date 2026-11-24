@@ -186,21 +186,30 @@ static int nbMinuteurs = 0;
 static uint32_t minRestant = 0, minTotal = 1;
 static String minNom;
 
+static int forme = 0;
 static void ciblesPour(Humeur h) {
   Visage v;
+  switch (forme) {
+    case 1: v.w = 118; v.h = 118; v.r = 59; break;   // ronds
+    case 2: v.w = 112; v.h = 112; v.r = 10; break;   // carrés
+    case 3: v.w = 132; v.h = 64; v.r = 30; break;    // fins
+    case 4: v.w = 126; v.h = 152; v.r = 44; break;   // grands
+    default: break;                                   // arrondis
+  }
+  const float bw = v.w, bh = v.h, br = v.r;
   switch (h) {
-    case H_CONTENT: v.joue = 0.42f; v.h = 118; break;
-    case H_TRISTE: v.tExt = 0.42f; v.h = 112; v.ly = 14; break;
-    case H_FACHE: v.tInt = 0.46f; v.h = 112; break;
-    case H_SURPRIS: v.w = 120; v.h = 150; v.r = 56; break;
+    case H_CONTENT: v.joue = 0.42f; v.h = bh * 0.92f; break;
+    case H_TRISTE: v.tExt = 0.42f; v.h = bh * 0.88f; v.ly = 14; break;
+    case H_FACHE: v.tInt = 0.46f; v.h = bh * 0.88f; break;
+    case H_SURPRIS: v.w = bw * 1.1f; v.h = bh * 1.18f; v.r = std::max(br, std::min(v.w, v.h) * 0.42f); break;
     case H_PERDU: v.droite = 0.68f; v.tInt = 0.18f; v.lx = -8; break;
     case H_CLIN: v.droite = 0.07f; break;
     case H_DORT: v.h = 10; v.r = 5; v.ly = 24; v.dort = 1; break;
     case H_AMOUR: v.coeur = 1; break;
     default: break;
   }
-  if (act == A_ECOUTE && h == H_NEUTRE) { v.w = 116; v.h = 140; }
-  if (act == A_REFLECHIT && h == H_NEUTRE) { v.ly = -16; v.lx = 18; v.h = 118; }
+  if (act == A_ECOUTE && h == H_NEUTRE) { v.w = bw * 1.07f; v.h = bh * 1.09f; }
+  if (act == A_REFLECHIT && h == H_NEUTRE) { v.ly = -16; v.lx = 18; v.h = bh * 0.92f; }
   cible = v;
 }
 
@@ -373,6 +382,7 @@ void ui::initialiser(Arduino_GFX *c) {
   ciblesPour(H_NEUTRE);
 }
 
+void ui::formeYeux(int f) { VERROU; forme = f; ciblesPour(humeurActuelle); }
 void ui::couleurYeux(uint16_t c) { VERROU; accent = c ? c : 0x371F; miseSale = true; }
 
 void ui::humeur(Humeur h, uint32_t duree) {

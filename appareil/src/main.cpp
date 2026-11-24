@@ -248,6 +248,7 @@ static void carteLocale(const String &quoi) {
 // ------------------------------------------------------------------ réglages appliqués
 void appliquerReglages() {
   ui::couleurYeux(couleur565(R.couleur));
+  ui::formeYeux(R.forme);
   audio::volume(R.volume);
   audio::gainMicro(R.micro);
   luminositeActuelle = -1;  // recalculée dans la boucle

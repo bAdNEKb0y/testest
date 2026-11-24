@@ -15,6 +15,7 @@ struct Reglages {
   String voix = "fr-FR-RemyMultilingualNeural";
   float debit = 1.0f;
   uint32_t couleur = 0x35E0FF;
+  int forme = 0;              // forme des yeux
   int luminosite = 200;       // 10..255
   int volume = 70;            // 0..100
   int micro = 30;             // gain des micros en dB (18..37)

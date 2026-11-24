@@ -61,7 +61,7 @@ static String reglagesJson() {
   d["nom"] = R.nom; d["prenom"] = R.prenom; d["ville"] = R.ville; d["serveur"] = R.serveur; d["code_regle"] = R.code.length() > 0;
   d["style"] = R.style; d["voix"] = R.voix; d["debit"] = R.debit;
   char c[8]; snprintf(c, sizeof c, "#%06X", (unsigned)R.couleur); d["couleur"] = c;
-  d["luminosite"] = R.luminosite; d["volume"] = R.volume; d["micro"] = R.micro; d["veille"] = R.veille;
+  d["forme"] = R.forme; d["luminosite"] = R.luminosite; d["volume"] = R.volume; d["micro"] = R.micro; d["veille"] = R.veille;
   d["nuit"] = R.nuit; d["nuit_debut"] = R.nuitDebut; d["nuit_fin"] = R.nuitFin; d["sous_titres"] = R.sousTitres;
   JsonArray rs = d["reseaux"].to<JsonArray>();
   for (auto &r : R.reseaux) rs.add(r.ssid);
@@ -89,6 +89,7 @@ static void routes() {
     if (d["voix"].is<const char *>()) R.voix = d["voix"].as<String>();
     if (!d["debit"].isNull()) R.debit = constrain(d["debit"].as<float>(), 0.8f, 1.3f);
     if (d["couleur"].is<const char *>()) R.couleur = strtoul(d["couleur"].as<const char *>() + 1, nullptr, 16);
+    if (!d["forme"].isNull()) R.forme = constrain(d["forme"].as<int>(), 0, 4);
     if (!d["luminosite"].isNull()) R.luminosite = constrain(d["luminosite"].as<int>(), 10, 255);
     if (!d["volume"].isNull()) R.volume = constrain(d["volume"].as<int>(), 0, 100);
     if (!d["micro"].isNull()) R.micro = constrain(d["micro"].as<int>(), 12, 37);
