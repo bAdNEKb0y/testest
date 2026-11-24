@@ -55,6 +55,9 @@ namespace ui {
   extern void (*surParler)();                   // toucher le visage
   extern void (*surChoix)(const String &texte); // toucher une réponse de quiz
   extern void (*surBouton)(const String &id);   // bouton d'une carte locale
+  extern void (*surImage)(const String &id, const String &legende);  // toucher une photo : la voir en grand
+  void photo(uint16_t *px466, const String &legende);  // photo plein écran (466 x 466, prend possession)
+  extern uint16_t *(*tampon)();                 // image en cours de dessin (pour l'effacer plus vite)
 
   // écran de veille (heure, météo, petits yeux qui bougent)
   void modeVeille(bool v);

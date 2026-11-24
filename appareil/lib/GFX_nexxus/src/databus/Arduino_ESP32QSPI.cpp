@@ -81,7 +81,7 @@ bool Arduino_ESP32QSPI::begin(int32_t speed, int8_t dataMode)
       .input_delay_ns = 0,
       .spics_io_num = -1, // avoid use system CS control
       .flags = SPI_DEVICE_HALFDUPLEX,
-      .queue_size = 1,
+      .queue_size = 2,  // Nexxus : deux envois en vol pour writePixelsRapide
       .pre_cb = nullptr,
       .post_cb = nullptr};
   esp_err_t ret = spi_bus_add_device(ESP32QSPI_SPI_HOST, &devcfg, &_handle);
@@ -698,3 +698,69 @@ GFX_INLINE void Arduino_ESP32QSPI::POLL_END()
 }
 
 #endif // #if defined(ESP32) && (CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C2 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32H2 || CONFIG_IDF_TARGET_ESP32P4 || CONFIG_IDF_TARGET_ESP32C5)
+
+// ------------------------------------------------------------------ Nexxus : envoi rapide d'une image entière
+// Gros paquets DMA (8192 pixels) et double tampon : on prépare le paquet suivant pendant que le précédent part.
+#define NEXXUS_PAQUET 8192
+void Arduino_ESP32QSPI::writePixelsRapide(uint16_t *data, uint32_t len)
+{
+  static uint32_t *tampons[2] = {nullptr, nullptr};
+  static spi_transaction_ext_t t[2];
+  if (!tampons[0])
+  {
+    for (int i = 0; i < 2; i++)
+      tampons[i] = (uint32_t *)heap_caps_aligned_alloc(16, NEXXUS_PAQUET * 2, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    if (!tampons[0] || !tampons[1])
+    {
+      writePixels(data, len);
+      return;
+    }
+  }
+  CS_LOW();
+  bool premier = true;
+  int b = 0, enVol = 0;
+  while (len)
+  {
+    uint32_t l = len > NEXXUS_PAQUET ? NEXXUS_PAQUET : len;
+    if (enVol == 2)
+    {
+      spi_transaction_t *r;
+      spi_device_get_trans_result(_handle, &r, portMAX_DELAY);
+      enVol--;
+    }
+    uint32_t *d = tampons[b];
+    uint32_t l2 = l >> 1;
+    for (uint32_t i = 0; i < l2; ++i)
+    {
+      uint16_t p1 = *data++, p2 = *data++;
+      MSB_32_16_16_SET(d[i], p1, p2);
+    }
+    if (l & 1)
+    {
+      uint16_t p1 = *data++;
+      MSB_16_SET(((uint16_t *)d)[l - 1], p1);
+    }
+    memset(&t[b], 0, sizeof(t[b]));
+    if (premier)
+    {
+      t[b].base.flags = SPI_TRANS_MODE_QIO;
+      t[b].base.cmd = 0x32;
+      t[b].base.addr = 0x003C00;
+      premier = false;
+    }
+    else
+      t[b].base.flags = SPI_TRANS_MODE_QIO | SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_VARIABLE_DUMMY;
+    t[b].base.tx_buffer = d;
+    t[b].base.length = l << 4;
+    spi_device_queue_trans(_handle, (spi_transaction_t *)&t[b], portMAX_DELAY);
+    enVol++;
+    b ^= 1;
+    len -= l;
+  }
+  while (enVol--)
+  {
+    spi_transaction_t *r;
+    spi_device_get_trans_result(_handle, &r, portMAX_DELAY);
+  }
+  CS_HIGH();
+}

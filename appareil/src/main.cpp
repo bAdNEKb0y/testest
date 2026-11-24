@@ -20,10 +20,40 @@
 #include "reseau.h"
 #include "ble.h"
 #include "http.h"
+#include <JPEGDEC.h>
 
-static Arduino_DataBus *bus = new Arduino_ESP32QSPI(LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
+static Arduino_ESP32QSPI *bus = new Arduino_ESP32QSPI(LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
 static Arduino_CO5300 *ecran = new Arduino_CO5300(bus, LCD_RESET, 0, ECRAN, ECRAN, 6, 0, 0, 0);
-static Arduino_Canvas *canevas = nullptr;
+// Deux images en mémoire : on dessine la suivante pendant que la précédente part vers l'écran (plus fluide)
+class Canevas : public Arduino_Canvas {
+public:
+  using Arduino_Canvas::Arduino_Canvas;
+  void tampon(uint16_t *f) { _framebuffer = f; }
+};
+static Canevas *canevas = nullptr;
+static uint16_t *tampons[2] = {nullptr, nullptr};
+static int tamponDessin = 0;
+static QueueHandle_t fileEnvoi;
+static SemaphoreHandle_t envoiFini;
+static volatile bool doitAllumer = false, doitEteindre = false;
+static int lumVoulue = 0, lumEnvoyee = -1;
+static void tacheEnvoi(void *) {
+  uint16_t *fb;
+  while (true) {
+    if (xQueueReceive(fileEnvoi, &fb, portMAX_DELAY) != pdTRUE) continue;
+    ecran->startWrite();
+    ecran->writeAddrWindow(0, 0, ECRAN, ECRAN);
+    bus->writePixelsRapide(fb, ECRAN * ECRAN);
+    ecran->endWrite();
+    xSemaphoreGive(envoiFini);
+  }
+}
+// commandes à l'écran : seulement quand aucune image n'est en train de partir
+static void commandesEcran() {
+  if (doitEteindre) { doitEteindre = false; ecran->setBrightness(0); ecran->displayOff(); lumEnvoyee = 0; }
+  if (doitAllumer) { doitAllumer = false; ecran->displayOn(); lumEnvoyee = -1; }
+  if (lumVoulue != lumEnvoyee) { ecran->setBrightness(lumVoulue); lumEnvoyee = lumVoulue; }
+}
 static TouchDrvCST92xx tactile;
 static SensorQMI8658 imu;
 static XPowersPMU pmu;
@@ -60,6 +90,37 @@ static void tacheSonnerie(void *) {
       audio::melodie(notes, 8, 110);
       if (millis() - sonnerieDebut > 60000) sonnerie = false;
     } else vTaskDelay(pdMS_TO_TICKS(100));
+  }
+}
+
+// ------------------------------------------------------------------ photos en plein écran (toucher une image)
+struct DemandePhoto { String id, legende; };
+static QueueHandle_t filePhotos;
+static uint16_t *photoPx = nullptr;
+static int dessinPhoto(JPEGDRAW *d) {
+  int w = std::min<int>(d->iWidth, ECRAN - d->x), h = std::min<int>(d->iHeight, ECRAN - d->y);
+  for (int r = 0; r < h; r++) memcpy(photoPx + (d->y + r) * ECRAN + d->x, d->pPixels + r * d->iWidth, w * 2);
+  return 1;
+}
+static void tachePhotos(void *) {
+  static JPEGDEC jpeg;
+  DemandePhoto *dp;
+  while (true) {
+    if (xQueueReceive(filePhotos, &dp, portMAX_DELAY) != pdTRUE) continue;
+    Tampon t;
+    int code = relais("vignette", "GET", nullptr, nullptr, 0, t, 20000, "&t=g&id=" + dp->id);
+    if (code == 200 && t.n > 100 && jpeg.openRAM(t.d, t.n, dessinPhoto)) {
+      photoPx = (uint16_t *)heap_caps_malloc(ECRAN * ECRAN * 2, MALLOC_CAP_SPIRAM);
+      if (photoPx) {
+        memset(photoPx, 0, ECRAN * ECRAN * 2);
+        jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
+        jpeg.decode(0, 0, 0);
+        ui::photo(photoPx, dp->legende);
+        photoPx = nullptr;
+      }
+      jpeg.close();
+    } else ui::sousTitre("Je n'arrive pas à charger cette photo.", 2500);
+    delete dp;
   }
 }
 
@@ -264,7 +325,7 @@ String executerCommande(const String &brute) {
 
 // ------------------------------------------------------------------ démarrage
 static void allumerEcran() {
-  if (ecranEteint) { ecran->displayOn(); ecranEteint = false; }
+  if (ecranEteint) { doitAllumer = true; ecranEteint = false; }
   ui::modeVeille(false);
   veilleForcee = false;
   derniereActivite = millis();
@@ -303,8 +364,15 @@ void setup() {
   if (!ecran->begin()) Serial.println("[écran] échec");
   ecran->fillScreen(0);
   ecran->setBrightness(0);
-  canevas = new Arduino_Canvas(ECRAN, ECRAN, ecran);
+  canevas = new Canevas(ECRAN, ECRAN, ecran);
   if (!canevas->begin(GFX_SKIP_OUTPUT_BEGIN)) Serial.println("[écran] pas assez de mémoire");
+  tampons[0] = canevas->getFramebuffer();
+  tampons[1] = (uint16_t *)heap_caps_aligned_alloc(16, ECRAN * ECRAN * 2, MALLOC_CAP_SPIRAM);
+  if (!tampons[1]) tampons[1] = tampons[0];
+  fileEnvoi = xQueueCreate(1, sizeof(uint16_t *));
+  envoiFini = xSemaphoreCreateBinary();
+  xSemaphoreGive(envoiFini);
+  xTaskCreatePinnedToCore(tacheEnvoi, "ecran", 4096, nullptr, 6, nullptr, 0);
   ui::initialiser(canevas);
 
   tactile.setPins(TP_RESET, TP_INT);
@@ -325,6 +393,11 @@ void setup() {
   ui::surParler = []() { allumerEcran(); sonnerie = false; cerveau::parler(); };
   ui::surChoix = [](const String &t) { cerveau::question(t); };
   ui::surBouton = [](const String &id) { if (id == "stop_alarme") sonnerie = false; };
+  ui::surImage = [](const String &id, const String &legende) {
+    DemandePhoto *d = new DemandePhoto{id, legende};
+    if (xQueueSend(filePhotos, &d, 0) != pdTRUE) delete d;
+  };
+  ui::tampon = []() { return tampons[tamponDessin]; };
   cerveau::surMinuteur = ajouterMinuteur;
   cerveau::surAnnulerMinuteurs = annulerMinuteurs;
   cerveau::surCarteLocale = carteLocale;
@@ -336,6 +409,8 @@ void setup() {
   ble::demarrer(R.nom);
   xTaskCreatePinnedToCore(tacheSonnerie, "sonnerie", 4096, nullptr, 1, nullptr, 0);
   xTaskCreatePinnedToCore(tacheMeteo, "meteo", 8192, nullptr, 1, nullptr, 0);
+  filePhotos = xQueueCreate(2, sizeof(DemandePhoto *));
+  xTaskCreatePinnedToCore(tachePhotos, "photos", 8192, nullptr, 2, nullptr, 0);
 
   // réveil : les yeux s'ouvrent
   ui::humeur(H_DORT);
@@ -479,12 +554,12 @@ void loop() {
   else if (enVeille) lum = std::min(lum, 70);
   // le jour, l'écran s'éteint 30 min après la veille ; la nuit, il reste une petite horloge
   bool eteindre = R.veille > 0 && inactif > (uint32_t)(R.veille + 30) * 60000 && !nuit;
-  if (eteindre && !ecranEteint) { ecran->setBrightness(0); ecran->displayOff(); ecranEteint = true; }
+  if (eteindre && !ecranEteint) { doitEteindre = true; ecranEteint = true; }
   if (!ecranEteint && lum != luminositeActuelle && reveilFait) {
     // transition douce
     int cible = lum, actuelle = luminositeActuelle < 0 ? 0 : luminositeActuelle;
     luminositeActuelle = actuelle + constrain(cible - actuelle, -12, 12);
-    ecran->setBrightness(luminositeActuelle);
+    lumVoulue = luminositeActuelle;
   }
 
   // --- port série : mêmes commandes que le Bluetooth (pratique pour tester)
@@ -496,11 +571,19 @@ void loop() {
 
   // --- dessin
   if (!ecranEteint) {
-    ui::dessiner(m);
-    canevas->flush();
+    ui::dessiner(m);                                   // dessine dans le tampon libre
+    xSemaphoreTake(envoiFini, portMAX_DELAY);          // l'image précédente est arrivée
+    commandesEcran();
+    uint16_t *fb = tampons[tamponDessin];
+    xQueueSend(fileEnvoi, &fb, portMAX_DELAY);         // elle part pendant qu'on dessine la suivante
+    if (tampons[1] != tampons[0]) { tamponDessin ^= 1; canevas->tampon(tampons[tamponDessin]); }
+  } else {
+    xSemaphoreTake(envoiFini, portMAX_DELAY);
+    commandesEcran();
+    xSemaphoreGive(envoiFini);
   }
   uint32_t duree = millis() - m;
-  int attente = (ecranEteint ? 100 : 33) - (int)duree;
+  int attente = (ecranEteint ? 100 : 22) - (int)duree;
   if (attente > 0) delay(attente);
   else delay(1);
 }

@@ -33,6 +33,8 @@ namespace ui {
 void (*surParler)() = nullptr;
 void (*surChoix)(const String &) = nullptr;
 void (*surBouton)(const String &) = nullptr;
+void (*surImage)(const String &, const String &) = nullptr;
+uint16_t *(*tampon)() = nullptr;
 String (*infosAppareil)() = nullptr;
 bool batterieFaible = false;
 bool horsLigne = false;
@@ -228,6 +230,9 @@ static uint32_t derniereAction = 0, carteOuverteA = 0;
 static int nbCartesVues = 0, nbFermetures = 0;
 static uint32_t astuceRouvrirFin = 0;
 static String choixFait;
+static uint16_t *photoPx = nullptr;
+static String photoTxt;
+static uint32_t photoAttenteDepuis = 0, photoDepuis = 0;
 
 static void icone(int code, int cx, int cy, int t);
 
@@ -298,6 +303,7 @@ static void miseEnPage() {
           e.bloc = &b;
           p.elems.push_back(e);
           p.hauteur += h + 4;
+          if (b.l.length()) ajouterTexte(p, F_PETIT, b.l, GRIS, 1);
           break;
         }
         case B_CHOIX: {
@@ -439,6 +445,16 @@ void ui::attacherImage(uint32_t id, const String &imgId, uint16_t *px, int w, in
   free(px);
 }
 
+void ui::photo(uint16_t *px, const String &legende) {
+  VERROU;
+  if (photoPx) free(photoPx);
+  photoPx = px;
+  photoTxt = nettoyer(legende);
+  photoAttenteDepuis = 0;
+  photoDepuis = millis();
+  derniereAction = millis();
+}
+
 void ui::minuteurs(int nb, uint32_t restant, uint32_t total, const String &nom) {
   VERROU;
   nbMinuteurs = nb; minRestant = restant; minTotal = total ? total : 1; minNom = nom;
@@ -465,8 +481,12 @@ static void tape(int x, int y) {
   if (page < (int)mise.size()) {
     int base = (int)carteY - (int)defil;
     for (auto &e : mise[page].elems) {
-      if (e.t != E_PILULE) continue;
       int ey = base + e.y;
+      if (e.t == E_IMAGE && e.bloc && e.bloc->img && x >= e.x && x <= e.x + e.w && y >= ey && y <= ey + e.h) {
+        if (ui::surImage) { photoAttenteDepuis = millis(); ui::surImage(e.bloc->id, e.bloc->l); }
+        return;
+      }
+      if (e.t != E_PILULE) continue;
       if (x >= e.x && x <= e.x + e.w && y >= ey && y <= ey + e.h) {
         if (e.code < 0) { if (ui::surBouton) ui::surBouton(e.bloc->id); return; }
         String choix = e.bloc->items[e.code];
@@ -481,6 +501,11 @@ static void tape(int x, int y) {
 
 void ui::toucher(int x, int y, bool presse, uint32_t t) {
   VERROU;
+  if (photoPx) {  // photo en grand : un toucher la referme
+    if (presse && !appui) appui = true;
+    if (!presse && appui) { appui = false; free(photoPx); photoPx = nullptr; derniereAction = millis(); }
+    return;
+  }
   if (presse && !appui) {
     appui = true; deplace = false; longFait = false; axe = 0;
     xDeb = xp = x; yDeb = yp = y; t0 = tp = t; vx = vy = 0;
@@ -857,7 +882,28 @@ void ui::dessiner(uint32_t m) {
   }
 
   // --- dessin
-  g->fillScreen(NOIR);
+  uint16_t *fb = ui::tampon ? ui::tampon() : nullptr;
+  if (fb) memset(fb, 0, ECRAN * ECRAN * 2);
+  else g->fillScreen(NOIR);
+  if (photoPx) {
+    g->draw16bitRGBBitmap(0, 0, photoPx, ECRAN, ECRAN);
+    if (photoTxt.length()) {
+      auto l = couper(F_SOUS, photoTxt, 280, 2);
+      int y = 412 - (int)(l.size() - 1) * 22;
+      for (auto &li : l) {
+        for (int ox = -1; ox <= 1; ox++) for (int oy = -1; oy <= 1; oy++) texteCentre(F_SOUS, li, CENTRE + ox * 2, y + oy * 2, NOIR);
+        texteCentre(F_SOUS, li, CENTRE, y, BLANC);
+        y += 22;
+      }
+    }
+    if (millis() - photoDepuis < 3000) {
+      float a = clampf((3000 - (millis() - photoDepuis)) / 800.f, 0, 1);
+      g->fillRoundRect(CENTRE - 86, 36, 172, 26, 13, attenue(0x18E3, a));
+      texteCentre(F_PETIT, "touche pour revenir", CENTRE, 54, attenue(BLANC, a));
+    }
+    bougeEncore = true;
+    return;
+  }
   veilleAlpha = approche(veilleAlpha, veille && !carteVisible ? 1 : 0, 5, dt);
   if (veilleAlpha > 0.97f) { dessinerVeille(m, 1); bougeEncore = true; return; }
   float p = clampf((ECRAN - carteY) / (float)(ECRAN - HAUT_CARTE), 0, 1.2f);
@@ -939,6 +985,10 @@ void ui::dessiner(uint32_t m) {
 
   // anneau d'activité autour de l'écran
   float t = (m - actDebut) / 1000.f;
+  if (photoAttenteDepuis && m - photoAttenteDepuis < 12000) {
+    float a0 = fmodf((m - photoAttenteDepuis) * 0.4f, 360);
+    anneau(6, accent, a0, a0 + 80);
+  } else photoAttenteDepuis = 0;
   if (act == A_ECOUTE) {
     anneau(5 + 16 * niveauLisse, attenue(accent, 0.55f + 0.45f * niveauLisse));
   } else if (act == A_REFLECHIT) {

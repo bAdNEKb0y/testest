@@ -156,7 +156,7 @@ static Carte *construireCarte(JsonObject e, std::vector<String> &images) {
       else if (k == "petit") b.k = B_PETIT;
       else if (k == "puce") b.k = B_PUCE;
       else if (k == "ligne") { b.k = B_LIGNE; b.l = bj["l"] | ""; b.v = bj["v"] | ""; }
-      else if (k == "image") { b.k = B_IMAGE; b.id = bj["id"] | ""; if (b.id.length()) images.push_back(b.id); else continue; }
+      else if (k == "image") { b.k = B_IMAGE; b.id = bj["id"] | ""; b.l = bj["l"] | ""; if (b.id.length()) images.push_back(b.id); else continue; }
       else if (k == "choix") { b.k = B_CHOIX; for (JsonVariant v : bj["items"].as<JsonArray>()) b.items.push_back(v.as<String>()); }
       else if (k == "depart") {
         b.k = B_DEPART; b.t = bj["code"] | ""; b.l = bj["dir"] | ""; b.n = bj["min"] | 0; b.h = bj["h"] | "";
