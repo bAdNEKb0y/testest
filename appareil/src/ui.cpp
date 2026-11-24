@@ -549,7 +549,10 @@ static void oeil(float ex, float ey, float ew, float eh, float r, uint16_t c, fl
   float ext = gaucheOeil ? gx : dx, inter = gaucheOeil ? dx : gx;
   if (vis.tExt > 0.02f) g->fillTriangle(ext, haut, inter, haut, ext, ey - eh / 2 + vis.tExt * eh * 1.25f, NOIR);
   if (vis.tInt > 0.02f) g->fillTriangle(inter, haut, ext, haut, inter, ey - eh / 2 + vis.tInt * eh * 1.25f, NOIR);
-  if (vis.joue > 0.02f) g->fillRoundRect(gx, ey + eh / 2 - vis.joue * eh, dx - gx, eh, r + lueur, NOIR);
+  if (vis.joue > 0.02f) {  // yeux rieurs : un arc ^ découpé par en dessous
+    float k = vis.joue / 0.42f;
+    g->fillEllipse(ex, ey + eh * 0.62f, ew * 0.62f + lueur, eh * 0.62f * k, NOIR);
+  }
 }
 
 static void coeur(float cx, float cy, float t, uint16_t c) {
