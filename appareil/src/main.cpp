@@ -328,7 +328,7 @@ static void sonnerReveil(const String &nom) {
   reveilNom = nom;
   audio::radioStop();
   ui::aube(true);
-  ui::humeur(H_CONTENT, 0);
+  ui::humeur(H_NEUTRE, 0);
   time_t t = time(nullptr); struct tm tm; localtime_r(&t, &tm);
   char h[8]; snprintf(h, sizeof h, "%02d:%02d", tm.tm_hour, tm.tm_min);
   Carte *c = new Carte();

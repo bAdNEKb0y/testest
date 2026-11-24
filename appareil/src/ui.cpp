@@ -159,6 +159,7 @@ static int hauteurLigne(const uint8_t *p) {
   if (p == F_TEXTE || p == F_FORT) return 25;
   if (p == F_TITRE) return 28;
   if (p == F_GRAND) return 33;
+  if (p == F_HORLOGE) return 88;
   return 30;
 }
 
@@ -280,7 +281,7 @@ static void miseEnPage() {
       premier = false;
       prec = b.k;
       switch (b.k) {
-        case B_TITRE: ajouterTexte(p, F_TITRE, b.t, BLANC, 4); break;
+        case B_TITRE: ajouterTexte(p, carte->type == "reveil" ? F_HORLOGE : F_TITRE, b.t, BLANC, 4); break;
         case B_SOUS: ajouterTexte(p, F_SOUS, b.t, accent, 2); break;
         case B_TEXTE: ajouterTexte(p, b.fort ? F_FORT : F_TEXTE, b.t, b.fort ? BLANC : GRIS_CLAIR); break;
         case B_PETIT: ajouterTexte(p, F_PETIT, b.t, GRIS, 4); break;
@@ -375,7 +376,7 @@ static void miseEnPage() {
         }
       }
     }
-    p.hauteur += 70;
+    p.hauteur += 24;
     mise.push_back(p);
   }
   miseSale = false;
@@ -973,9 +974,9 @@ void ui::dessiner(uint32_t m) {
   // réveil : lever de soleil derrière le visage
   if (aubeOn) {
     float pa = clampf((m - aubeDebut) / 45000.f, 0.15f, 1);
-    for (int i = 0; i < 7; i++) {
-      float f = i / 6.f;
-      uint16_t c = melange(0x2000, i < 4 ? 0xFB40 : 0xFE60, f);
+    for (int i = 0; i < 12; i++) {
+      float f = i / 11.f;
+      uint16_t c = f < 0.5f ? melange(0x2000, 0xFB40, f * 2) : melange(0xFB40, 0xFE60, (f - 0.5f) * 2);
       g->fillCircle(CENTRE, CENTRE + 60, (R + 40) * (1 - f * 0.8f) * (0.7f + 0.3f * pa), attenue(c, pa * (0.35f + 0.65f * f)));
     }
   }
@@ -990,7 +991,8 @@ void ui::dessiner(uint32_t m) {
 
   if (carte && carteY < ECRAN) {
     int top = (int)carteY;
-    g->fillRect(0, top, ECRAN, ECRAN - top, FOND_CARTE);
+    bool transparente = carte->type == "reveil";   // le lever de soleil reste visible derrière
+    if (!transparente) g->fillRect(0, top, ECRAN, ECRAN - top, FOND_CARTE);
     g->fillRoundRect(CENTRE - 24, top + 9, 48, 5, 3, 0x4228);
     int base = top - (int)defil;
     if (carte->type == "heure") carteHeure(top);
@@ -1003,7 +1005,7 @@ void ui::dessiner(uint32_t m) {
     // barre de défilement sur le bord droit + flèche quand il reste à lire
     int mxd = maxDefil();
     bool flecheBas = false;
-    if (mxd > 6 && carte->type != "heure" && tirage < 2) {
+    if (mxd > 6 && carte->type != "heure" && !transparente && tirage < 2) {
       auto arc = [&](float a, float b, uint16_t c) {
         if (a < 0 && b > 0) { g->fillArc(CENTRE, CENTRE, R - 7, R - 11, a + 360, 359.9f, c); g->fillArc(CENTRE, CENTRE, R - 7, R - 11, 0, b, c); }
         else g->fillArc(CENTRE, CENTRE, R - 7, R - 11, a < 0 ? a + 360 : a, b < 0 ? b + 360 : b, c);
@@ -1016,12 +1018,14 @@ void ui::dessiner(uint32_t m) {
       flecheBas = defil < mxd - 4;
     }
     // bords : la carte glisse sous le visage, et s'estompe en bas
-    if (top < HAUT_CARTE + 1) g->fillRect(0, 0, ECRAN, top, NOIR);
-    g->fillRect(0, top - 1, ECRAN, 1, TRAIT);
-    g->fillRect(0, top, ECRAN, 2, FOND_CARTE);
-    g->fillRoundRect(CENTRE - 24, top + 9, 48, 5, 3, 0x4228);
-    for (int k2 = 0; k2 < 6; k2++) g->fillRect(0, BAS_VISIBLE + k2 * 3, ECRAN, 3, melange(NOIR, FOND_CARTE, 0.85f - k2 * 0.15f));
-    g->fillRect(0, BAS_VISIBLE + 18, ECRAN, ECRAN, NOIR);
+    if (!transparente) {
+      if (top < HAUT_CARTE + 1) g->fillRect(0, 0, ECRAN, top, NOIR);
+      g->fillRect(0, top - 1, ECRAN, 1, TRAIT);
+      g->fillRect(0, top, ECRAN, 2, FOND_CARTE);
+      g->fillRoundRect(CENTRE - 24, top + 9, 48, 5, 3, 0x4228);
+      for (int k2 = 0; k2 < 6; k2++) g->fillRect(0, BAS_VISIBLE + k2 * 3, ECRAN, 3, melange(NOIR, FOND_CARTE, 0.85f - k2 * 0.15f));
+      g->fillRect(0, BAS_VISIBLE + 18, ECRAN, ECRAN, NOIR);
+    }
     if (flecheBas && !(carte->pages.size() > 1 && page == 0 && m - carteOuverteA < 6000 && nbCartesVues <= 4)) {
       float a = 0.5f + 0.4f * sinf(m * 0.006f);
       g->fillTriangle(CENTRE - 10, 421, CENTRE + 10, 421, CENTRE, 431, attenue(accent, a));
