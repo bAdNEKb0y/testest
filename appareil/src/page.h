@@ -47,7 +47,8 @@ button.second{background:#1a222d;color:var(--t)}button.danger{background:#2a1416
 <div class="ligne"><input id="code" placeholder="laisser vide pour ne pas changer" autocomplete="off"><button class="second" onclick="genCode()">Créer</button></div>
 <label>Personnalité</label><select id="style"><option value="pote">Le pote</option><option value="majordome">Le majordome</option><option value="sarcastique">Le sarcastique</option><option value="prof">Le prof</option></select>
 <div class="ligne"><div><label>Son nom</label><input id="nom"></div><div><label>Ton prénom</label><input id="prenom"></div></div>
-<p class="ligne" style="margin-top:14px"><button onclick="sauver(['serveur','code','style','nom','prenom'])">Enregistrer</button><button class="second" onclick="tester()">Tester</button></p>
+<label>Ta ville (météo de l'écran de veille)</label><input id="ville" placeholder="Paris">
+<p class="ligne" style="margin-top:14px"><button onclick="sauver(['serveur','code','style','nom','prenom','ville'])">Enregistrer</button><button class="second" onclick="tester()">Tester</button></p>
 <div class="tests" id="tests"></div>
 </section>
 

@@ -19,6 +19,7 @@
 #include "cerveau.h"
 #include "reseau.h"
 #include "ble.h"
+#include "http.h"
 
 static Arduino_DataBus *bus = new Arduino_ESP32QSPI(LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
 static Arduino_CO5300 *ecran = new Arduino_CO5300(bus, LCD_RESET, 0, ECRAN, ECRAN, 6, 0, 0, 0);
@@ -59,6 +60,50 @@ static void tacheSonnerie(void *) {
       audio::melodie(notes, 8, 110);
       if (millis() - sonnerieDebut > 60000) sonnerie = false;
     } else vTaskDelay(pdMS_TO_TICKS(100));
+  }
+}
+
+// ------------------------------------------------------------------ météo de l'écran de veille (Open-Meteo, sans clé, sans serveur)
+static String encoderURL(const String &s) {
+  String o;
+  const char *h = "0123456789ABCDEF";
+  for (unsigned i = 0; i < s.length(); i++) {
+    uint8_t c = s[i];
+    if (isalnum(c) || c == '-' || c == '_' || c == '.') o += (char)c;
+    else { o += '%'; o += h[c >> 4]; o += h[c & 15]; }
+  }
+  return o;
+}
+static void tacheMeteo(void *) {
+  String villeConnue;
+  float lat = 0, lon = 0;
+  String nomVille;
+  while (true) {
+    if (reseau::connecte() && R.ville.length()) {
+      if (villeConnue != R.ville) {
+        Tampon t;
+        if (requete("https://geocoding-api.open-meteo.com/v1/search?count=1&language=fr&name=" + encoderURL(R.ville), "GET", nullptr, nullptr, 0, t, 15000, false) == 200) {
+          JsonDocument d;
+          if (!deserializeJson(d, t.d, t.n) && d["results"][0]["latitude"].is<float>()) {
+            lat = d["results"][0]["latitude"]; lon = d["results"][0]["longitude"];
+            nomVille = d["results"][0]["name"] | R.ville;
+            villeConnue = R.ville;
+          }
+        }
+      }
+      if (villeConnue.length()) {
+        Tampon t;
+        String url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(lat, 3) + "&longitude=" + String(lon, 3) + "&current=temperature_2m,weather_code&timezone=auto";
+        if (requete(url, "GET", nullptr, nullptr, 0, t, 15000, false) == 200) {
+          JsonDocument d;
+          if (!deserializeJson(d, t.d, t.n) && !d["current"]["temperature_2m"].isNull())
+            ui::meteo(d["current"]["weather_code"] | 0, String((int)lroundf(d["current"]["temperature_2m"].as<float>())) + "°", nomVille);
+        }
+        vTaskDelay(pdMS_TO_TICKS(20 * 60000));
+        continue;
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(30000));
   }
 }
 
@@ -220,6 +265,7 @@ String executerCommande(const String &brute) {
 // ------------------------------------------------------------------ démarrage
 static void allumerEcran() {
   if (ecranEteint) { ecran->displayOn(); ecranEteint = false; }
+  ui::modeVeille(false);
   derniereActivite = millis();
   luminositeActuelle = -1;
 }
@@ -286,6 +332,7 @@ void setup() {
   reseau::demarrer();
   ble::demarrer(R.nom);
   xTaskCreatePinnedToCore(tacheSonnerie, "sonnerie", 4096, nullptr, 1, nullptr, 0);
+  xTaskCreatePinnedToCore(tacheMeteo, "meteo", 8192, nullptr, 1, nullptr, 0);
 
   // réveil : les yeux s'ouvrent
   ui::humeur(H_DORT);
@@ -339,7 +386,7 @@ void loop() {
   if (presse && !appuiEnCours) {
     appuiEnCours = true;
     // le premier toucher sur un écran éteint ou endormi sert juste à le réveiller
-    appuiAvaleEnCours = ecranEteint || (luminositeActuelle >= 0 && luminositeActuelle < 40 && !estLaNuit());
+    appuiAvaleEnCours = ecranEteint || ui::enVeille();
     allumerEcran();
     if (sonnerie) { sonnerie = false; appuiAvaleEnCours = true; ui::fermerCarte(); }
   }
@@ -405,10 +452,14 @@ void loop() {
   if (actif) derniereActivite = m;
   uint32_t inactif = m - derniereActivite;
   int lum = R.luminosite;
-  if (nuit && inactif > 20000) lum = 12;
+  // veille : grande heure, météo et petits yeux, écran plus sombre
+  bool enVeille = (R.veille > 0 && inactif > (uint32_t)R.veille * 60000) || (nuit && inactif > 30000);
+  if (enVeille != ui::enVeille() && !ui::carteOuverte()) ui::modeVeille(enVeille);
+  if (nuit && inactif > 30000) lum = 10;
   else if (nuit) lum = std::min(R.luminosite, 60);
-  if (R.veille > 0 && inactif > (uint32_t)R.veille * 60000) lum = std::min(lum, 18);
-  bool eteindre = R.veille > 0 && inactif > (uint32_t)(R.veille + 15) * 60000 && !nuit;
+  else if (enVeille) lum = std::min(lum, 70);
+  // le jour, l'écran s'éteint 30 min après la veille ; la nuit, il reste une petite horloge
+  bool eteindre = R.veille > 0 && inactif > (uint32_t)(R.veille + 30) * 60000 && !nuit;
   if (eteindre && !ecranEteint) { ecran->setBrightness(0); ecran->displayOff(); ecranEteint = true; }
   if (!ecranEteint && lum != luminositeActuelle && reveilFait) {
     // transition douce

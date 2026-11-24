@@ -176,6 +176,10 @@ static uint32_t prochainRegard = 1500;
 static String sousTitreTxt;
 static uint32_t sousTitreFin = 0;
 static float sousTitreAlpha = 0;
+static bool veille = false;
+static float veilleAlpha = 0;
+static int meteoCode = -1;
+static String meteoTemp, meteoVille;
 static int nbMinuteurs = 0;
 static uint32_t minRestant = 0, minTotal = 1;
 static String minNom;
@@ -320,10 +324,10 @@ static void miseEnPage() {
           break;
         }
         case B_METEO: {
-          Elem e{E_ICONE, CENTRE, p.hauteur, 120, 168};
+          Elem e{E_ICONE, CENTRE, p.hauteur, 120, 122};
           e.code = b.code; e.s = b.t; e.s2 = b.l;
           p.elems.push_back(e);
-          p.hauteur += 172;
+          p.hauteur += 126;
           break;
         }
         case B_JOUR: {
@@ -564,6 +568,9 @@ static void coeur(float cx, float cy, float t, uint16_t c) {
 
 static void visage(float cx, float cy, float s, uint32_t m) {
   uint16_t c = ui::horsLigne && act == A_REPOS ? melange(accent, GRIS, 0.5f) : accent;
+  if (humeurActuelle == H_FACHE) c = melange(c, 0xFAC7, 0.8f);
+  else if (humeurActuelle == H_TRISTE) c = melange(c, 0x4B1F, 0.35f);
+  else if (humeurActuelle == H_DORT) c = attenue(c, 0.55f);
   float ecart = 82 * s;
   for (int i = 0; i < 2; i++) {
     bool gauche = i == 0;
@@ -714,10 +721,9 @@ static void dessinerPage(int idx, int dx, int base) {
         break;
       }
       case E_ICONE:
-        icone(e.code, x, y + 46, 100);
-        texteCentre(F_TEMP, e.s, x, y + 150, BLANC);
-        g->setFont(F_SOUS);
-        texteCentre(F_SOUS, e.s2, x, y + 168, GRIS);
+        icone(e.code, x - 62, y + 46, 96);
+        texte(F_TEMP, e.s, x + 2, y + 74, BLANC);
+        texteCentre(F_SOUS, e.s2, x, y + 114, GRIS);
         break;
       case E_QR: qr(e.s, x, y, e.w); break;
     }
@@ -743,6 +749,50 @@ static void carteHeure(int base) {
     snprintf(b, sizeof b, "%u:%02u", (unsigned)(s / 60), (unsigned)(s % 60));
     texteCentre(F_SOUS, minNom + " : " + b, CENTRE, base + 205, GRIS_CLAIR);
   }
+}
+
+// ------------------------------------------------------------------ écran de veille : heure, météo, petits yeux
+void ui::modeVeille(bool v) { VERROU; veille = v; }
+bool ui::enVeille() { return veille; }
+void ui::meteo(int code, const String &temp, const String &ville) { VERROU; meteoCode = code; meteoTemp = temp; meteoVille = nettoyer(ville); }
+
+static void dessinerVeille(uint32_t m, float a) {
+  // tout bouge un peu chaque minute pour ne pas marquer l'écran AMOLED
+  uint32_t minute = m / 60000;
+  int dx = (int)((minute * 7) % 25) - 12, dy = (int)((minute * 11) % 25) - 12;
+  time_t t = time(nullptr);
+  struct tm tm;
+  localtime_r(&t, &tm);
+  bool heureOk = tm.tm_year >= 120;
+  uint16_t txt = attenue(0xE73C, a);
+  // petits yeux
+  visage(CENTRE + dx, 118 + dy, 0.36f, m);
+  char h[8];
+  snprintf(h, sizeof h, "%02d:%02d", tm.tm_hour, tm.tm_min);
+  texteCentre(F_HORLOGE, heureOk ? h : "--:--", CENTRE + dx, 268 + dy, txt);
+  static const char *J[] = {"dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."};
+  static const char *M[] = {"janv.", "févr.", "mars", "avril", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."};
+  if (heureOk) texteCentre(F_TEXTE, String(J[tm.tm_wday]) + " " + tm.tm_mday + " " + M[tm.tm_mon], CENTRE + dx, 306 + dy, attenue(accent, a * 0.9f));
+  int y = 352 + dy;
+  if (meteoCode >= 0) {
+    int w = largeur(F_FORT, meteoTemp);
+    int total = 40 + 8 + w;
+    int x0m = CENTRE + dx - total / 2;
+    icone(meteoCode, x0m + 20, y - 8, 40);
+    texte(F_FORT, meteoTemp, x0m + 48, y, txt);
+    if (meteoVille.length()) texteCentre(F_PETIT, meteoVille, CENTRE + dx, y + 22, attenue(GRIS, a));
+    y += 44;
+  }
+  if (nbMinuteurs) {
+    char b[24];
+    uint32_t sec = (minRestant + 999) / 1000;
+    snprintf(b, sizeof b, "%u:%02u", (unsigned)(sec / 60), (unsigned)(sec % 60));
+    texteCentre(F_SOUS, minNom + "  " + b, CENTRE + dx, y + 4, attenue(accent, a));
+    float f = clampf(minRestant / (float)minTotal, 0, 1);
+    g->fillArc(CENTRE, CENTRE, R - 1, R - 4, -90, -90 + 360 * f, attenue(accent, 0.6f * a));
+  }
+  if (ui::batterieFaible) texteCentre(F_PETIT, "batterie faible", CENTRE + dx, 60 + dy, ROUGE);
+  if (ui::horsLigne) g->fillCircle(CENTRE + dx, 420 + dy, 3, attenue(ROUGE, a));
 }
 
 // ------------------------------------------------------------------ image complète
@@ -808,6 +858,8 @@ void ui::dessiner(uint32_t m) {
 
   // --- dessin
   g->fillScreen(NOIR);
+  veilleAlpha = approche(veilleAlpha, veille && !carteVisible ? 1 : 0, 5, dt);
+  if (veilleAlpha > 0.97f) { dessinerVeille(m, 1); bougeEncore = true; return; }
   float p = clampf((ECRAN - carteY) / (float)(ECRAN - HAUT_CARTE), 0, 1.2f);
   float pp = clampf(p, 0, 1);
   bool st = sousTitreTxt.length() && (int32_t)(sousTitreFin - m) > 0 && pp < 0.05f;
@@ -850,8 +902,27 @@ void ui::dessiner(uint32_t m) {
       texteCentre(F_PETIT, "glisse sur le côté »", CENTRE, 430, attenue(accent, 0.8f));
   }
 
-  // visage (grand, ou en petit au-dessus d'une carte)
-  if (pp < 1 || carte) visage(CENTRE, cy, s, m);
+  // visage (grand, ou en petit au-dessus d'une carte) ; il rapetisse en partant en veille
+  if (veilleAlpha > 0.02f && !carte) {
+    float v = veilleAlpha;
+    visage(CENTRE, cy + (118 - cy) * v, s * (1 - 0.64f * v), m);
+    if (v > 0.3f) {
+      // l'heure apparaît doucement
+      time_t tt = time(nullptr); struct tm tm; localtime_r(&tt, &tm);
+      char h[8]; snprintf(h, sizeof h, "%02d:%02d", tm.tm_hour, tm.tm_min);
+      texteCentre(F_HORLOGE, tm.tm_year >= 120 ? h : "--:--", CENTRE, 268, attenue(0xE73C, (v - 0.3f) / 0.7f));
+    }
+  } else if (pp < 1 || carte) visage(CENTRE, cy, s, m);
+
+  // ce qu'il est en train de faire, écrit en clair
+  if (!(carte && carteVisible) && sousTitreAlpha < 0.3f && veilleAlpha < 0.05f) {
+    if (act == A_ECOUTE) texteCentre(F_SOUS, "Je t'écoute...", CENTRE, 392, attenue(accent, 0.9f));
+    else if (act == A_REFLECHIT)
+      for (int k2 = 0; k2 < 3; k2++) {
+        float ph = sinf(m * 0.008f - k2 * 0.9f);
+        g->fillCircle(CENTRE - 22 + k2 * 22, 384 - (int)(ph > 0 ? ph * 8 : 0), 6, attenue(accent, 0.5f + 0.5f * (ph > 0 ? ph : 0)));
+      }
+  }
 
   // sous-titres
   if (sousTitreAlpha > 0.03f && !(carte && carteVisible)) {
@@ -860,7 +931,7 @@ void ui::dessiner(uint32_t m) {
     for (auto &l : lignes) { texteCentre(F_TEXTE, l, CENTRE, y, attenue(BLANC, sousTitreAlpha)); y += 26; }
   }
   // astuce : revoir la dernière carte
-  if (!carteVisible && derniere && (int32_t)(astuceRouvrirFin - m) > 0 && !st && !nbMinuteurs) {
+  if (!carteVisible && derniere && (int32_t)(astuceRouvrirFin - m) > 0 && !st && !nbMinuteurs && veilleAlpha < 0.05f) {
     float a = clampf((astuceRouvrirFin - m) / 1000.f, 0, 1);
     g->fillTriangle(CENTRE - 10, 412, CENTRE + 10, 412, CENTRE, 402, attenue(GRIS, a));
     texteCentre(F_PETIT, "glisse vers le haut pour revoir", CENTRE, 432, attenue(GRIS, a));

@@ -13,6 +13,7 @@ void chargerReglages() {
   P.begin("nexxus", true);
   R.nom = P.getString("nom", R.nom);
   R.prenom = P.getString("prenom", R.prenom);
+  R.ville = P.getString("ville", R.ville);
   R.serveur = P.getString("serveur", R.serveur);
   R.code = P.getString("code", R.code);
   R.style = P.getString("style", R.style);
@@ -44,6 +45,7 @@ void sauverReglages() {
   P.begin("nexxus", false);
   P.putString("nom", R.nom);
   P.putString("prenom", R.prenom);
+  P.putString("ville", R.ville);
   P.putString("serveur", R.serveur);
   P.putString("code", R.code);
   P.putString("style", R.style);

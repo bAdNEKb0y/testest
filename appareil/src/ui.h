@@ -56,6 +56,10 @@ namespace ui {
   extern void (*surChoix)(const String &texte); // toucher une réponse de quiz
   extern void (*surBouton)(const String &id);   // bouton d'une carte locale
 
+  // écran de veille (heure, météo, petits yeux qui bougent)
+  void modeVeille(bool v);
+  bool enVeille();
+  void meteo(int code, const String &temp, const String &ville);
   // minuteurs affichés autour de l'écran
   void minuteurs(int nb, uint32_t restantMs, uint32_t totalMs, const String &nom);
   // infos système pour les cartes locales

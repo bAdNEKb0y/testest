@@ -58,7 +58,7 @@ static bool lireCorps(JsonDocument &d) {
 
 static String reglagesJson() {
   JsonDocument d;
-  d["nom"] = R.nom; d["prenom"] = R.prenom; d["serveur"] = R.serveur; d["code_regle"] = R.code.length() > 0;
+  d["nom"] = R.nom; d["prenom"] = R.prenom; d["ville"] = R.ville; d["serveur"] = R.serveur; d["code_regle"] = R.code.length() > 0;
   d["style"] = R.style; d["voix"] = R.voix; d["debit"] = R.debit;
   char c[8]; snprintf(c, sizeof c, "#%06X", (unsigned)R.couleur); d["couleur"] = c;
   d["luminosite"] = R.luminosite; d["volume"] = R.volume; d["micro"] = R.micro; d["veille"] = R.veille;
@@ -82,6 +82,7 @@ static void routes() {
     if (!lireCorps(d)) return json("{\"erreur\":\"illisible\"}", 400);
     if (d["nom"].is<const char *>()) R.nom = d["nom"].as<String>().substring(0, 20);
     if (d["prenom"].is<const char *>()) R.prenom = d["prenom"].as<String>().substring(0, 30);
+    if (d["ville"].is<const char *>()) { R.ville = d["ville"].as<String>().substring(0, 40); R.ville.trim(); }
     if (d["serveur"].is<const char *>()) { R.serveur = d["serveur"].as<String>(); R.serveur.trim(); }
     if (d["code"].is<const char *>() && d["code"].as<String>().length()) R.code = d["code"].as<String>();
     if (d["style"].is<const char *>()) R.style = d["style"].as<String>();

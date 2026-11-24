@@ -8,6 +8,7 @@ struct Reseau { String ssid, mdp; };
 struct Reglages {
   String nom = "Nexxus";
   String prenom = "";
+  String ville = "Paris";     // météo de l'écran de veille
   String serveur = "";        // ex. https://nexxus.pm/relay.php
   String code = "";           // code secret du boîtier (le même que $CODE_APPAREIL)
   String style = "pote";      // pote, majordome, sarcastique, prof
