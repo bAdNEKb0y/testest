@@ -1,0 +1,9 @@
+{
+  "rewrites": [{ "source": "/relay.php", "destination": "/api/relay" }],
+  "functions": { "api/relay.js": { "maxDuration": 120 } },
+  "headers": [{ "source": "/(.*)", "headers": [
+    { "key": "X-Content-Type-Options", "value": "nosniff" },
+    { "key": "Referrer-Policy", "value": "same-origin" },
+    { "key": "Permissions-Policy", "value": "microphone=(self), camera=(self)" }
+  ]}]
+}

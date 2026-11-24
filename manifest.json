@@ -1,0 +1,17 @@
+{
+  "name": "Nexxus Compagnon",
+  "short_name": "Nexxus",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0a0e19",
+  "theme_color": "#0a0e19",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230a0e19'/%3E%3Crect x='136' y='176' width='84' height='140' rx='42' fill='%23ffb36b'/%3E%3Crect x='292' y='176' width='84' height='140' rx='42' fill='%23ffb36b'/%3E%3Cpath d='M196 372q60 30 120 0' stroke='%23ffb36b' stroke-width='18' fill='none' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

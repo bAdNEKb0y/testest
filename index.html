@@ -1,0 +1,2076 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Nexxus Compagnon</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#0a0e19">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout : écran unique. Le visage occupe tout ; verrouillé, il devient un noyau entouré d'anneaux.
+   Une fiche glisse à droite (ou en bas sur téléphone) quand il présente une info. */
+:root{
+  --ink:#0a0e19;
+  --ink-2:#121a2b;
+  --ink-3:#1a2338;
+  --line:#26304c;
+  --text:#ecEFF7;
+  --muted:#7b85a3;
+  --glow:#ffb36b;
+  --glow-soft:rgba(255,179,107,.12);
+  --bad:#ff5d5d;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--ink);color:var(--text);font-family:var(--display);overflow:hidden;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0;box-sizing:border-box}
+.stage{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 42%,#151d33 0%,var(--ink) 62%);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px)}
+#cv{position:absolute;inset:0;width:100%;height:100%}
+
+.status{transition:opacity .8s;position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;pointer-events:none;z-index:3}
+.status i{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .3s,box-shadow .3s}
+.status.on i{background:var(--glow);box-shadow:0 0 10px var(--glow)}
+
+/* ---------- écran de verrouillage ---------- */
+.lock{position:fixed;inset:0;pointer-events:none;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:calc(40px + env(safe-area-inset-top,0px)) 16px calc(92px + env(safe-area-inset-bottom,0px));text-align:center;transition:opacity .5s}
+.lock.off{opacity:0}
+.lk-time{font-weight:300;font-size:clamp(56px,10vw,112px);letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.lk-date{color:var(--muted);margin-top:8px;font-size:15px}
+.lk-os{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--glow);margin-bottom:14px;opacity:.85}
+.lk-state{font-family:var(--mono);font-size:clamp(13px,1.6vw,16px);letter-spacing:.32em;text-transform:uppercase;color:var(--glow);min-height:1.4em}
+.lk-state.bad{color:var(--bad)}
+.lk-hint{color:var(--muted);font-size:14px;margin-top:10px;min-height:1.3em}
+
+/* ---------- sous-titres ---------- */
+.caption{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px));
+  text-align:center;font-size:clamp(17px,2.2vw,23px);line-height:1.45;text-wrap:balance;max-width:760px;margin:0 auto;pointer-events:none;transition:opacity .6s,right .5s;z-index:2}
+.caption .you{display:block;color:var(--muted);font-size:.75em;margin-bottom:6px}
+.caption .tag{font-family:var(--mono);font-size:11px;color:var(--glow);letter-spacing:.1em;text-transform:uppercase;margin-left:8px;vertical-align:middle}
+.caption.fade{opacity:0}
+.hint{position:fixed;left:0;right:0;bottom:calc(32px + env(safe-area-inset-bottom,0px));text-align:center;font-family:var(--mono);font-size:12px;color:var(--muted);pointer-events:none;z-index:2}
+
+/* ---------- boutons ---------- */
+.tools{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column-reverse;align-items:flex-end;gap:10px;z-index:5;transition:opacity .8s}
+.tiroir{display:flex;flex-direction:column-reverse;gap:10px;align-items:center}
+.tools:not(.ouvert) .tiroir{display:none}
+.tiroir .tbtn{animation:sortir .25s ease-out both}
+@keyframes sortir{from{opacity:0;transform:translateY(10px) scale(.8)}}
+.bas{display:flex;gap:10px}
+/* interface qui s'efface quand on ne touche à rien */
+body.calme .tools:not(.ouvert),body.calme .status{opacity:.18}
+body.calme .tools:not(.ouvert):hover{opacity:1}
+.tbtn{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--ink-2);color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.tbtn svg{width:20px;height:20px}
+.tbtn:hover{color:var(--glow);border-color:var(--glow)}
+.tbtn.on{color:var(--ink);background:var(--glow);border-color:var(--glow)}
+.timers{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:8px;z-index:6;flex-wrap:wrap;justify-content:flex-end;max-width:60vw}
+.timer{display:flex;align-items:baseline;gap:8px;font:inherit;background:var(--ink-2);border:1px solid var(--glow);color:var(--text);border-radius:999px;padding:6px 12px;cursor:pointer}
+.timer .t-nom{font-size:12px;color:var(--muted)}
+.timer .t-val{font-family:var(--mono);font-size:15px;color:var(--glow);font-variant-numeric:tabular-nums}
+body.fiche-on .timers{right:calc(min(540px,48vw) + 48px)}
+.kbd{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:calc(max(16px,env(safe-area-inset-right,0px)) + 110px);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:5}
+#ask{width:100%;box-sizing:border-box;font:inherit;font-size:16px;background:var(--ink-2);color:var(--text);border:1px solid var(--line);border-radius:999px;padding:12px 56px 12px 18px}
+.envoi{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;border:none;background:var(--glow);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
+.envoi svg{width:18px;height:18px}
+.envoi:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+#ask:focus,.tbtn:focus-visible,.f-close:focus-visible,.stage:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+
+/* ---------- fiche ---------- */
+.fiche{position:fixed;z-index:4;top:calc(20px + env(safe-area-inset-top,0px));bottom:calc(80px + env(safe-area-inset-bottom,0px));right:max(16px,env(safe-area-inset-right,0px));
+  width:min(540px,48vw);background:var(--ink-2);border:1px solid var(--line);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;
+  transform:translateX(calc(100% + 40px));transition:transform .6s cubic-bezier(.2,.8,.2,1);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.fiche.open{transform:none}
+.fiche.compact{bottom:auto;max-height:calc(100% - 120px)}
+.f-prog{height:3px;background:var(--line);flex:none}
+.f-prog i{display:block;height:100%;width:0;background:var(--glow);box-shadow:0 0 12px var(--glow)}
+.f-scroll{overflow-y:auto;flex:1;min-height:0}
+.f-hero{position:relative;aspect-ratio:16/10;max-width:100%;background:radial-gradient(circle at 30% 30%,var(--glow-soft),transparent 60%),var(--ink-3);overflow:hidden}
+.f-hero img{width:100%;height:100%;object-fit:cover;display:block;animation:kb 18s ease-out both}
+@keyframes kb{from{transform:scale(1.12)}to{transform:scale(1)}}
+.f-hero .ph{position:absolute;inset:0;display:grid;place-items:center;font-size:120px;font-weight:800;color:var(--glow);opacity:.25}
+.f-hero::after{content:"";position:absolute;inset:auto 0 0;height:45%;background:linear-gradient(transparent,var(--ink-2))}
+.f-credit{position:absolute;right:12px;top:10px;z-index:1;font-family:var(--mono);font-size:10px;color:#fff;background:rgba(0,0,0,.45);padding:3px 7px;border-radius:6px}
+.f-thumbs{display:flex;gap:8px;padding:0 22px;margin-top:-28px;position:relative;z-index:1}
+.f-thumbs button{width:58px;height:42px;border-radius:8px;overflow:hidden;border:2px solid var(--line);padding:0;cursor:pointer;background:var(--ink-3)}
+.f-thumbs button.on{border-color:var(--glow)}
+.f-thumbs img{width:100%;height:100%;object-fit:cover}
+.f-body{padding:18px 22px 24px;display:flex;flex-direction:column;gap:14px}
+.f-sub{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--glow)}
+.f-title{font-size:clamp(26px,3vw,36px);font-weight:800;letter-spacing:-.02em;line-height:1.05;margin:0;text-wrap:balance}
+.f-resume{font-size:16px;line-height:1.55;color:#cfd4e3;margin:0}
+.f-points{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:0}
+.f-points div{background:var(--ink-2);padding:12px 14px;min-width:0;opacity:0;transform:translateY(8px);animation:up .5s ease-out forwards}
+.f-points dt{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.f-points dd{margin:4px 0 0;font-size:17px;font-weight:600;overflow-wrap:anywhere}
+@keyframes up{to{opacity:1;transform:none}}
+.f-src{display:flex;flex-direction:column;gap:6px}
+.f-src a{color:var(--muted);font-size:13px;text-decoration:none;border-bottom:1px solid transparent;width:fit-content;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.f-src a:hover{color:var(--glow);border-color:var(--glow)}
+.f-label{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.f-close{position:absolute;top:14px;left:14px;z-index:2;width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;cursor:pointer;font-size:18px;line-height:1}
+.f-tag{font-family:var(--mono);font-size:10px;color:var(--ink);background:var(--glow);padding:2px 6px;border-radius:4px;margin-left:8px;letter-spacing:.1em}
+body.fiche-on .caption{opacity:0}
+@media (max-width:820px){
+  .fiche{left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));width:auto;top:auto;height:62vh;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateY(calc(100% + 100px))}
+  body.fiche-on .caption{opacity:0}
+  .fiche.compact{height:auto;max-height:62vh;bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+}
+/* ---------- réglages ---------- */
+.reglages{position:fixed;z-index:7;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(76px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));max-height:calc(100% - 120px);overflow-y:auto;box-sizing:border-box;
+  background:var(--ink-2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:16px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.r-titre{font-weight:800;font-size:20px;margin:0;display:flex;justify-content:space-between;align-items:center}
+.r-x{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;line-height:1}
+.r-grp{display:flex;flex-direction:column;gap:8px}
+.r-lab{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.sw{width:32px;height:32px;border-radius:50%;border:2px solid var(--ink-2);outline:2px solid transparent;cursor:pointer;padding:0}
+.sw.on{outline-color:var(--text)}
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.seg button{font:inherit;font-size:14px;background:var(--ink-3);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px;cursor:pointer}
+.seg button.on{border-color:var(--glow);color:var(--glow)}
+.r-row{display:flex;gap:8px;flex-wrap:wrap}
+.r-btn{font:inherit;font-size:14px;background:transparent;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
+.r-btn:hover{border-color:var(--glow);color:var(--glow)}
+.r-btn.on{border-color:var(--glow);color:var(--ink);background:var(--glow)}
+.diag{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;font-size:14px;align-items:start}
+.diag .ic{font-family:var(--mono);font-weight:500}
+.diag .ic.ok{color:var(--ok,#5fd3a0)}
+.diag .ic.ko{color:var(--bad)}
+.diag b{font-weight:600}
+.diag small{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.diag .aide{color:var(--text);font-size:12px;margin-top:2px}
+#rVol,#rDebit{width:100%;accent-color:var(--glow)}
+.r-note{color:var(--muted);font-size:12px}
+#rVerrou{font:inherit;background:var(--ink-3);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px}
+.sw:focus-visible,.seg button:focus-visible,.r-btn:focus-visible,#rVerrou:focus-visible,#rVol:focus-visible,.r-x:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+
+/* ---------- écran de veille, nuit, sous-titres karaoké ---------- */
+.veille{position:fixed;left:0;right:0;top:calc(9vh + env(safe-area-inset-top,0px));text-align:center;pointer-events:none;opacity:0;transition:opacity 1.2s;z-index:1}
+.veille.on{opacity:.8}
+.v-time{font-weight:300;font-size:clamp(64px,12vw,140px);letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.v-info{color:var(--muted);margin-top:10px;font-size:16px}
+.dim{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:8;transition:opacity 2s}
+.dim.on{opacity:.4}
+.caption .w{color:var(--muted);transition:color .25s}
+.caption .w.dit{color:var(--text)}
+/* ---------- panneau des départs ---------- */
+.tb-head{padding:22px 22px 6px;display:flex;flex-direction:column;gap:6px}
+.tb-route{font-size:clamp(22px,2.6vw,30px);font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:0;text-wrap:balance}
+.tb-rows{display:flex;flex-direction:column;padding:8px 14px 18px}
+.tb-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 8px;border-bottom:1px solid var(--line);opacity:0;transform:translateY(8px);animation:up .45s ease-out forwards}
+.tb-row:last-child{border-bottom:none}
+.tb-badge{min-width:44px;height:40px;padding:0 8px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:18px;background:var(--ink-3);color:var(--text);box-sizing:border-box}
+.tb-dir{min-width:0}
+.tb-dir b{display:block;font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-dir small{display:block;color:var(--muted);font-family:var(--mono);font-size:11px;margin-top:3px}
+.tb-min{font-family:var(--mono);font-size:30px;font-weight:500;color:var(--glow);font-variant-numeric:tabular-nums;text-align:right;line-height:1}
+.tb-min small{display:block;font-size:10px;letter-spacing:.14em;color:var(--muted);margin-top:4px}
+.tb-min.now{animation:clign 1s steps(2) infinite}
+@keyframes clign{50%{opacity:.35}}
+.tb-note{padding:0 22px 22px;color:var(--muted);font-size:13px}
+/* ---------- appareil photo ---------- */
+.cam{position:fixed;inset:0;z-index:9;background:#000;display:flex;flex-direction:column}
+.cam video{flex:1;min-height:0;width:100%;object-fit:cover;background:#000}
+.cam-bar{display:flex;align-items:center;justify-content:space-around;gap:16px;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(22px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:#000}
+.cam-bar .r-btn{color:#fff;border-color:#444}
+.cam-shot{width:74px;height:74px;border-radius:50%;border:5px solid #fff;background:var(--glow);cursor:pointer;flex:none}
+.cam-shot:active{transform:scale(.94)}
+.cam-msg{position:absolute;top:calc(20px + env(safe-area-inset-top,0px));left:16px;right:16px;text-align:center;color:#fff;font-size:15px;text-shadow:0 1px 6px #000}
+.cam-shot:focus-visible,.cam-bar .r-btn:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
+.photo-vue{position:fixed;z-index:3;left:max(16px,env(safe-area-inset-left,0px));top:calc(48px + env(safe-area-inset-top,0px));width:min(220px,34vw);border:6px solid #f2efe8;border-bottom-width:22px;border-radius:4px;box-shadow:0 20px 50px rgba(0,0,0,.5);transform:rotate(-4deg);animation:pola .6s cubic-bezier(.2,.9,.3,1.3) both}
+@keyframes pola{from{transform:rotate(-14deg) translateY(-30px) scale(.7);opacity:0}}
+/* ---------- mini-jeux ---------- */
+.jeu-body{display:flex;flex-direction:column;gap:16px;padding:8px 22px 24px}
+.jeu-texte{font-size:clamp(22px,2.6vw,30px);font-weight:600;line-height:1.3;margin:0;text-wrap:balance}
+.jeu-texte.pendu{font-family:var(--mono);letter-spacing:.35em;font-size:clamp(28px,4vw,42px);color:var(--glow)}
+.jeu-texte.pfc{font-size:64px;letter-spacing:.1em;text-align:center}
+.jeu-info{color:var(--muted);font-size:14px;margin:0}
+.jeu-score{font-family:var(--mono);font-size:13px;color:var(--glow);border:1px solid var(--glow);border-radius:999px;padding:4px 12px;width:fit-content}
+.jeu-choix{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.jeu-choix button{font:inherit;font-size:16px;text-align:left;background:var(--ink-3);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;display:flex;gap:10px;align-items:baseline;min-width:0}
+.jeu-choix button b{font-family:var(--mono);color:var(--glow);flex:none}
+.jeu-choix button span{min-width:0;overflow-wrap:anywhere}
+.jeu-choix button:hover,.jeu-choix button:focus-visible{border-color:var(--glow);outline:none}
+.jeu-choix button.choisi{border-color:var(--glow);background:var(--glow-soft)}
+@media (max-width:480px){.jeu-choix{grid-template-columns:1fr}}
+/* ---------- infos du jour ---------- */
+.inf-liste{list-style:none;margin:0;padding:6px 14px 20px;display:flex;flex-direction:column;gap:4px;counter-reset:inf}
+.inf-item{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;padding:14px 10px;border-radius:14px;transition:background .4s,opacity .4s;counter-increment:inf}
+.inf-item::before{content:counter(inf);grid-row:span 3;font-family:var(--mono);font-size:22px;color:var(--muted);line-height:1.2;transition:color .4s}
+.inf-item.lu{opacity:.55}
+.inf-item.actif{background:var(--glow-soft);opacity:1}
+.inf-item.actif::before{color:var(--glow)}
+.inf-cat{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--glow)}
+.inf-titre{font-size:18px;font-weight:700;line-height:1.25;margin:0;text-wrap:balance}
+.inf-res{font-size:14px;line-height:1.5;color:#cfd4e3;margin:0}
+.inf-src{font-size:12px;color:var(--muted)}
+.ag-body{display:flex;flex-direction:column;gap:10px;padding:10px 22px 24px}
+.ag-body .r-lab{margin-top:8px}
+.ag-vide{color:var(--muted);font-size:14px;margin:0}
+.ag-rap{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:var(--ink-3);border-left:3px solid var(--glow)}
+.ag-quand{font-family:var(--mono);font-size:12px;color:var(--glow)}
+.ag-txt{font-size:16px;min-width:0;overflow-wrap:anywhere}
+.ag-tache{display:flex;align-items:center;gap:12px;font:inherit;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left;transition:opacity .4s}
+.ag-tache:hover{border-color:var(--glow)}
+.ag-case{width:20px;height:20px;border-radius:6px;border:2px solid var(--glow);flex:none;display:grid;place-items:center}
+.ag-tache.fait{opacity:.4}
+.ag-tache.fait .ag-case{background:var(--glow)}
+.ag-tache.fait .ag-txt{text-decoration:line-through}
+.ag-tache:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+@media (max-width:600px){
+  .hint{display:none}
+  .fiche{bottom:calc(80px + env(safe-area-inset-bottom,0px));height:58vh}
+  .fiche:not(.open){transform:translateY(calc(100% + 240px))}
+  .fiche.compact{height:auto;max-height:58vh;top:auto;bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-motion:reduce){.f-hero img{animation:none}.fiche{transition:none}}
+</style>
+
+<div class="stage" id="stage" role="button" tabindex="0" aria-label="Touche pour parler"><canvas id="cv"></canvas></div>
+<div class="status" id="status"><i></i><span id="statusTxt">Verrouillé</span></div>
+
+<div class="lock" id="lock" aria-live="polite">
+  <div>
+    <div class="lk-os">NEXXUS OS · NOYAU 3.0</div>
+    <div class="lk-time" id="lkTime">--:--</div>
+    <div class="lk-date" id="lkDate"></div>
+  </div>
+  <div>
+    <div class="lk-state" id="lkState"></div>
+    <div class="lk-hint" id="lkHint"></div>
+  </div>
+</div>
+
+<div class="caption fade" id="caption" aria-live="polite"></div>
+<div class="hint" id="hint" hidden>Touche le visage pour parler</div>
+
+<aside class="fiche" id="fiche" aria-live="polite" aria-hidden="true">
+  <div class="f-prog"><i id="fProg"></i></div>
+  <div class="f-scroll" id="fScroll"></div>
+</aside>
+
+<form class="kbd" id="kbd" hidden><input id="ask" autocomplete="off" enterkeyhint="send" placeholder="Écris ici…"><button class="envoi" id="envoi" type="button" aria-label="Envoyer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></form>
+<div class="timers" id="timers" aria-live="polite"></div>
+<img class="photo-vue" id="photoVue" alt="Ta photo" hidden>
+<div class="cam" id="cam" hidden role="dialog" aria-label="Appareil photo">
+  <video id="camVid" playsinline muted autoplay></video>
+  <div class="cam-msg" id="camMsg">Vise ce que tu veux me montrer</div>
+  <div class="cam-bar">
+    <button class="r-btn" id="camAnnuler" type="button">Annuler</button>
+    <button class="cam-shot" id="camPrendre" type="button" aria-label="Prendre la photo"></button>
+    <button class="r-btn" id="camGalerie" type="button">Galerie</button>
+  </div>
+  <input type="file" id="camInput" accept="image/*" capture="environment" hidden>
+</div>
+<div class="veille" id="veille" aria-hidden="true"><div class="v-time" id="vTime"></div><div class="v-info" id="vInfo"></div></div>
+<div class="dim" id="dim"></div>
+<div class="reglages" id="reglages" hidden role="dialog" aria-label="Réglages">
+  <h2 class="r-titre">Réglages <button class="r-x" id="rClose" type="button" aria-label="Fermer les réglages">×</button></h2>
+  <div class="r-grp"><span class="r-lab">Couleur des yeux</span><div class="swatches" id="rCouleurs"></div></div>
+  <div class="r-grp"><span class="r-lab">Voix</span><div class="seg" id="rVoix"></div><small class="r-note" id="rVoixNote"></small></div>
+  <div class="r-grp"><label class="r-lab" for="rDebit">Vitesse de parole</label><input type="range" id="rDebit" min="0.8" max="1.3" step="0.05"></div>
+  <div class="r-grp"><span class="r-lab">Visage</span><div class="seg" id="rThemes"></div></div>
+  <div class="r-grp"><span class="r-lab">Personnalité</span><div class="seg" id="rStyles"></div></div>
+  <div class="r-grp"><span class="r-lab">Sens</span><div class="r-row"><button class="r-btn" id="rBruit" type="button" aria-pressed="false">Réagir aux bruits</button></div></div>
+  <div class="r-grp"><label class="r-lab" for="rVol">Volume</label><input type="range" id="rVol" min="0" max="1" step="0.05"></div>
+  <div class="r-grp"><label class="r-lab" for="rVerrou">Verrouillage automatique</label>
+    <select id="rVerrou"><option value="5">après 5 min</option><option value="15">après 15 min</option><option value="30">après 30 min</option><option value="0">jamais</option></select></div>
+  <div class="r-grp"><span class="r-lab">Actions</span><div class="r-row">
+    <button class="r-btn" id="rBrief" type="button">Briefing maintenant</button>
+    <button class="r-btn" id="rOubli" type="button">Nouvelle conversation</button>
+    <button class="r-btn" id="rDevoirs" type="button" aria-pressed="false">Mode devoirs</button>
+    <button class="r-btn" id="rDiag" type="button">Tester l'installation</button></div></div>
+  <div class="r-grp" id="rDiagRes" hidden aria-live="polite"></div>
+</div>
+<div class="tools" id="tools">
+  <div class="bas">
+    <button class="tbtn" id="kbdBtn" type="button" aria-label="Écrire au lieu de parler"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg></button>
+    <button class="tbtn" id="plusBtn" type="button" aria-expanded="false" aria-label="Plus d'options"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+  </div>
+  <div class="tiroir" id="tiroir">
+    <button class="tbtn" id="camBtn" type="button" aria-label="Montrer quelque chose avec la caméra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+    <button class="tbtn" id="earBtn" type="button" aria-pressed="false" aria-label="Mode mains libres"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9a6 6 0 1 1 12 0c0 3-2 4-3 5.5S14 18 12 20a3 3 0 0 1-4-1"/><path d="M9.5 9.5a2.5 2.5 0 1 1 5 0c0 1.2-1 1.7-1.5 2.3"/></svg></button>
+    <button class="tbtn" id="muteBtn" type="button" aria-label="Couper la voix"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path id="waves" d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg></button>
+    <button class="tbtn" id="lockBtn" type="button" aria-label="Verrouiller"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
+    <button class="tbtn" id="gearBtn" type="button" aria-label="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
+</div>
+
+<script>
+/* ================= RÉGLAGES ================= */
+const CONFIG = {
+  nom: "Nexxus",
+  prenom: "Hector",
+  relay: "relay.php",
+  ville: "Paris", lat: 48.8566, lon: 2.3522,
+  phraseDemo: "protocole nexxus",   // utilisée seulement quand le relais est absent (aperçu)
+  verrouAuto: 15                     // minutes sans parler avant verrouillage auto
+};
+/* ============================================ */
+
+const COULEURS = {ambre:[255,179,107], cyan:[94,234,212], violet:[178,150,255], rose:[255,128,170], vert:[140,235,150]};
+const STYLES = {pote:"Pote", majordome:"Majordome", sarcastique:"Sarcastique", prof:"Prof"};
+const THEMES = {classique:"Classique", chat:"Chat", pixel:"Pixel", neon:"Néon"};
+let REG = {couleur:"ambre", style:"pote", volume:1, verrou:CONFIG.verrouAuto, theme:"classique", bruit:false, voixClaude:"buttery", voixAzure:"fr-FR-RemyMultilingualNeural", debit:1};
+try{ Object.assign(REG, JSON.parse(localStorage.getItem("nexxus_reglages")||"{}")); }catch(e){}
+if(!COULEURS[REG.couleur]) REG.couleur = "ambre";
+if(!STYLES[REG.style]) REG.style = "pote";
+if(!THEMES[REG.theme]) REG.theme = "classique";
+function sauverReglages(){ try{ localStorage.setItem("nexxus_reglages", JSON.stringify(REG)); }catch(e){} }
+function appliquerCouleur(){
+  const [r,g,b] = COULEURS[REG.couleur], st = document.documentElement.style;
+  st.setProperty("--glow", `rgb(${r},${g},${b})`); st.setProperty("--glow-soft", `rgba(${r},${g},${b},.14)`);
+}
+appliquerCouleur();
+const nuit = ()=>{ const h = new Date().getHours(); return h>=23 || h<7; };
+const volumeEffectif = ()=> REG.volume * (nuit() ? .55 : 1);
+
+const $ = id => document.getElementById(id);
+// vieux navigateurs (Android/iOS anciens) : roundRect n'existe pas -> sinon tout le dessin plante
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r){
+    r = Math.max(0, Math.min(r, w/2, h/2));
+    this.moveTo(x+r, y); this.arcTo(x+w, y, x+w, y+h, r); this.arcTo(x+w, y+h, x, y+h, r);
+    this.arcTo(x, y+h, x, y, r); this.arcTo(x, y, x+w, y, r); this.closePath(); return this;
+  };
+}
+// un appel au serveur ne peut plus bloquer l'appareil indéfiniment
+function requete(action, corps, delai=20000){
+  const ctrl = new AbortController(), t = setTimeout(()=>ctrl.abort(), delai);
+  const opt = {credentials:"same-origin", signal:ctrl.signal};
+  if(corps!==undefined){ opt.method = "POST"; opt.headers = {"Content-Type":"application/json"}; opt.body = JSON.stringify(corps); }
+  return fetch(`${CONFIG.relay}?a=${action}`, opt).finally(()=>clearTimeout(t));
+}
+const fmtH = d => d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}).replace(":"," h ");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = ms => new Promise(r=>setTimeout(r, ms));
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+const easeOut = t => 1-Math.pow(1-t,3);
+
+let etat = "verrou";          // verrou | auth | ouverture | actif | fermeture
+let horsLigne = false;
+let stockageLocal = false;   // sur Vercel : agenda et souvenirs gardés sur l'appareil
+/* Dans Claude, la page a son propre cerveau (Claude), ses voix et sa dictée, sans ton serveur. */
+const CAP = {sample:null, tts:null, dict:null, outils:false, images:false, pret:false};
+let cerveauRefuse = false, ttsRefuse = false, dicteeSansLangue = false;
+const cerveauClaude = ()=> horsLigne && !!CAP.sample && !cerveauRefuse;
+(async()=>{
+  if(!window.claude || typeof window.claude.use !== "function"){ CAP.pret = true; return; }
+  const [s, t, d] = await Promise.all(["sample","tts","dictation"].map(n=> window.claude.use(n).catch(()=>null)));
+  CAP.sample = s; CAP.tts = t; CAP.dict = d;
+  if(s){ const l = await s.limits().catch(()=>null); CAP.outils = !!l?.tools; CAP.images = !!l?.images; }
+  if(t){ t.onState(({state, reason})=>{ ttsEtat = state; if(reason==="not_granted" || reason==="unavailable") ttsRefuse = true; }); }
+  CAP.pret = true;
+})();
+let ttsEtat = "idle";
+let derniereActivite = Date.now();
+
+/* ---------------- horloge de l'écran verrouillé ---------------- */
+function tick(){
+  const d = new Date();
+  $("lkTime").textContent = d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  $("lkDate").textContent = d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+}
+tick(); setInterval(tick, 1000);
+
+/* ---------------- texte qui se décode ---------------- */
+const GLYPHES = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&/<>*";
+let decodeId = 0;
+function decoder(el, texte, duree=700){
+  const id = ++decodeId;
+  if(reduce){ el.textContent = texte; return; }
+  const t0 = performance.now();
+  (function f(now){
+    if(id!==decodeId) return;
+    const p = Math.min(1,(now-t0)/duree), n = Math.floor(p*texte.length);
+    el.textContent = texte.slice(0,n) + [...texte.slice(n)].map(c=>c===" "?" ":GLYPHES[Math.floor(Math.random()*GLYPHES.length)]).join("");
+    if(p<1) requestAnimationFrame(f);
+  })(t0);
+}
+function lockTexte(etatTxt, hint="", mauvais=false){
+  $("lkState").classList.toggle("bad", mauvais);
+  decoder($("lkState"), etatTxt);
+  $("lkHint").textContent = hint;
+}
+
+/* ---------------- sons (synthétisés, aucun fichier) ---------------- */
+let actx = null, analyser = null, buf = null, audioLive = false;
+const audioEl = new Audio();
+function initAudio(){
+  try{
+    if(!actx){
+      actx = new (window.AudioContext||window.webkitAudioContext)();
+      analyser = actx.createAnalyser(); analyser.fftSize = 512; buf = new Uint8Array(analyser.fftSize);
+      actx.createMediaElementSource(audioEl).connect(analyser); analyser.connect(actx.destination);
+    }
+    if(actx.state==="suspended") actx.resume();
+    if(!audioDebloque){ audioDebloque = true; audioEl.src = SILENCE; audioEl.play().catch(()=>{}); }  // iPhone : autorise la lecture plus tard
+  }catch(e){}
+  garderEcran();
+  if(window.DeviceMotionEvent?.requestPermission && !mouvementDemande){ mouvementDemande = true; DeviceMotionEvent.requestPermission().catch(()=>{}); }
+  demarrerBruit();
+}
+let mouvementDemande = false;
+let audioDebloque = false;
+const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+let wakeLock = null;
+async function garderEcran(){
+  try{ if("wakeLock" in navigator && !wakeLock){ wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", ()=>{ wakeLock = null; }); } }catch(e){}
+}
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState!=="visible") return;
+  if(actx){ garderEcran(); if(actx.state!=="running") actx.resume().catch(()=>{}); }
+  verifierSession();
+});
+addEventListener("offline", ()=>{ if(etat==="actif"){ sousTitre("", "Plus de connexion internet. Je t'attends.", ""); mood("perdu"); } });
+addEventListener("online", ()=>{ if(etat==="actif" && !occupe){ sousTitre("", "Connexion retrouvée.", ""); mood("content"); setTimeout(()=>{ if(F.mood==="content") mood("veille"); }, 2000); } });
+function ton(f0, f1, dur, type="sine", vol=.18, debut=0){
+  if(!actx || !voixOn) return;
+  vol *= volumeEffectif(); if(vol < .002) return;
+  const t = actx.currentTime + debut, o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t+dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t+.02); g.gain.exponentialRampToValueAtTime(.0001, t+dur);
+  o.connect(g).connect(actx.destination); o.start(t); o.stop(t+dur+.05);
+}
+const SFX = {
+  blip:  ()=>ton(1400,1600,.07,"sine",.08),
+  scan:  ()=>{ ton(220,880,.9,"sawtooth",.04); ton(440,1760,.9,"sine",.05); },
+  ouvrir:()=>{ ton(160,1200,.55,"triangle",.16); ton(880,880,.35,"sine",.12,.55); ton(1320,1320,.6,"sine",.1,.7); ton(55,40,1.2,"sine",.25,.5); },
+  refus: ()=>{ ton(140,110,.18,"square",.09); ton(140,90,.25,"square",.09,.24); },
+  fermer:()=>{ ton(1100,70,.8,"triangle",.15); ton(60,30,.9,"sine",.2,.3); },
+  fiche: ()=>{ ton(600,900,.12,"sine",.07); ton(900,1200,.12,"sine",.06,.08); }
+};
+
+/* ---------------- VISAGE + HUD ---------------- */
+const cv = $("cv"), cxMain = cv.getContext("2d");
+let cx = cxMain;
+// thème pixel : le visage est dessiné en tout petit puis agrandi sans lissage
+const pc = document.createElement("canvas"), pcx = pc.getContext("2d");
+Object.defineProperty(pcx, "shadowBlur", {get(){ return 0; }, set(){}});
+const F = {mood:"veille", lx:0, ly:0, tx:0, ty:0, lookT:0, blink:0, nextBlink:2, open:0, emo:null, clinT:0, clinCote:1, prochainClin:25, yeux:[], cx:0, cy:0};
+const HUD = {p:.75, r:1, spin:1, rouge:0, prog:0, shake:0, scan:-1, flash:0, ang:0};
+const E = {h:1, w:1, smile:0, mouth:0, slant:0};
+const PARTS = [];
+let ficheOn = 0, ficheT = 0;
+const EMO = {surpris:{h:1.3,w:1.15,slant:0,smile:0}, fache:{h:.8,w:1.05,slant:1,smile:0}, triste:{h:.9,w:.95,slant:-1,smile:0},
+             content:{h:1,w:1.05,slant:0,smile:1}, clin:{h:1,w:1.05,slant:0,smile:0}, perdu:{h:.85,w:.9,slant:0,smile:0}};
+let emoT = null;
+function emotion(e, duree=0){ F.emo = EMO[e] ? e : null; clearTimeout(emoT); if(e==="clin") clin(); if(duree) emoT = setTimeout(()=>{ F.emo = null; }, duree); }
+function clin(cote=1){ setTimeout(()=>{ F.clinT = .55; F.clinCote = cote; }, 350); }
+const MOODS = {veille:"En ligne", dort:"Je somnole", ecoute:"J'écoute", pense:"Je réfléchis", cherche:"Je cherche", parle:"Je parle", content:"Content", perdu:"Pas compris"};
+function mood(m){ F.mood = m; if(etat==="actif"){ $("statusTxt").textContent = MOODS[m]; $("status").classList.toggle("on", !["veille","dort"].includes(m)); } }
+let qualite = 1;   // 1 = haute, 0 = économie
+function fit(){ const p = qualite ? Math.min(2, devicePixelRatio||1) : 1; cv.width = innerWidth*p; cv.height = innerHeight*p; cx.setTransform(p,0,0,p,0,0); }
+addEventListener("resize", fit); fit();
+
+function couleur(a=1){ // couleur choisie -> rouge selon HUD.rouge
+  const [r0,g0,b0] = COULEURS[REG.couleur], k = HUD.rouge;
+  return `rgba(${Math.round(r0+(255-r0)*k)},${Math.round(g0+(93-g0)*k)},${Math.round(b0+(93-b0)*k)},${a})`;
+}
+function anneaux(x, y, s, now){
+  const p = HUD.p; if(p<=.01) return;
+  const R = 235*s*HUD.r, sp = HUD.spin;
+  cx.save(); cx.translate(x, y);
+  cx.shadowColor = couleur(.8); cx.shadowBlur = qualite ? 14*s*p : 0;
+  // anneau pointillé
+  const A = HUD.ang;
+  cx.save(); cx.rotate(A*.15); cx.setLineDash([2*s, 9*s]); cx.lineWidth = 1.5*s; cx.strokeStyle = couleur(.55*p);
+  cx.beginPath(); cx.arc(0,0,R,0,Math.PI*2); cx.stroke(); cx.restore();
+  // trois arcs épais
+  cx.save(); cx.rotate(-A*.35); cx.lineWidth = 4*s; cx.lineCap = "round"; cx.strokeStyle = couleur(.85*p);
+  for(let i=0;i<3;i++){ cx.beginPath(); cx.arc(0,0,R*1.12, i*2.094, i*2.094+1.1); cx.stroke(); }
+  cx.restore();
+  // graduations
+  cx.save(); cx.rotate(A*.06); cx.strokeStyle = couleur(.35*p); cx.lineWidth = 1.2*s;
+  for(let i=0;i<72;i++){ const a = i/72*Math.PI*2, L = i%6===0 ? 16*s : 6*s; cx.beginPath(); cx.moveTo(Math.cos(a)*R*1.25, Math.sin(a)*R*1.25); cx.lineTo(Math.cos(a)*(R*1.25+L), Math.sin(a)*(R*1.25+L)); cx.stroke(); }
+  cx.restore();
+  // jauge de progression (boot / identification)
+  if(HUD.prog>0){ cx.lineWidth = 3*s; cx.strokeStyle = couleur(p); cx.beginPath(); cx.arc(0,0,R*.9,-Math.PI/2,-Math.PI/2+HUD.prog*Math.PI*2); cx.stroke(); }
+  cx.restore();
+}
+
+/* ---------------- VIE : petites animations quand il ne fait rien ---------------- */
+// chaque animation renvoie des modificateurs pour p (0 → 1) : h/w = taille des yeux, dy = décalage vertical, bouche = bâillement
+const ANIMS = {
+  etirement:{duree:1.7, f:p=>{ const k = Math.sin(Math.PI*p); return {h:1+.38*k, w:1-.14*k, dy:-14*k}; }},
+  baillement:{duree:2.8, f:p=>{ const k = Math.sin(Math.PI*Math.min(1,p*1.15)); return {h:1-.72*k, w:1+.06*k, dy:4*k, bouche:k}; }},
+  soupir:{duree:2.2, f:p=>{ const k = Math.sin(Math.PI*p); return {h:1-.4*k, dy:10*k}; }},
+  sursaut:{duree:.6, f:p=>{ const k = Math.sin(Math.PI*p); return {h:1+.3*k, w:1+.1*k, dy:-22*k}; }},
+  vertige:{duree:2.6, f:p=>({spirale: p<.92})},
+  tour:{duree:2.2, f:p=>{ const a = p*Math.PI*2 - Math.PI/2; F.tx = Math.cos(a)*.8; F.ty = Math.sin(a)*.7; F.lookT = .3; return {}; }},
+  doubleClin:{duree:.9, f:p=>{ if(p<.05 || (p>.45 && p<.5)) F.blink = 1; return {}; }},
+};
+function lancerAnim(nom){ if(reduce && nom!=="vertige") return; F.anim = {nom, t0:performance.now()}; }
+function animEnCours(now){
+  const neutre = {h:1, w:1, dy:0, bouche:0, spirale:false};
+  if(!F.anim) return neutre;
+  const a = ANIMS[F.anim.nom], p = (now - F.anim.t0)/1000/a.duree;
+  if(p>=1){ F.anim = null; return neutre; }
+  return {...neutre, ...a.f(p)};
+}
+let prochaineVie = 14, bailleAvantSommeil = false;
+function vie(dt){
+  if(etat!=="actif" || occupe || F.anim || F.mood!=="veille" || sonnerie) { if(F.mood!=="veille") bailleAvantSommeil = false; return; }
+  const inactif = (Date.now() - derniereActivite)/1000;
+  if(inactif > 78 && !bailleAvantSommeil){ bailleAvantSommeil = true; lancerAnim("baillement"); ton(320, 170, 1.3, "sine", .04); return; }
+  prochaineVie -= dt;
+  if(prochaineVie > 0) return;
+  prochaineVie = 12 + Math.random()*22;
+  const fatigue = nuit() || inactif > 50;
+  const tirage = [["etirement", 2], ["tour", 2], ["doubleClin", 2], ["soupir", inactif > 40 ? 2 : .5], ["baillement", fatigue ? 2.5 : .4]];
+  let r = Math.random()*tirage.reduce((a,[,w])=>a+w, 0);
+  for(const [nom, w] of tirage){ r -= w; if(r <= 0){ lancerAnim(nom); if(nom==="baillement") ton(320, 170, 1.3, "sine", .04); break; } }
+}
+// caresse : appui long sur le visage
+function caresse(){
+  if(etat!=="actif" || occupe) return;
+  derniereActivite = Date.now(); bailleAvantSommeil = false;
+  emotion("content", 2600); mood("content"); setTimeout(()=>{ if(F.mood==="content") mood("veille"); }, 2600);
+  ton(65, 60, 1.6, "sawtooth", .045); ton(68, 63, 1.4, "sawtooth", .03, .2);      // ronron
+  if(!reduce) for(let i=0;i<7;i++) PARTS.push({coeur:true, x:F.cx + (Math.random()-.5)*160, y:F.cy - 40, vx:(Math.random()-.5)*60, vy:-60 - Math.random()*80, t:0, vie:1.4 + Math.random()*.6, taille:16 + Math.random()*14});
+}
+// secoué : vertige
+let dernierVertige = 0;
+function vertige(){
+  if(etat!=="actif" || Date.now() - dernierVertige < 4000) return;
+  dernierVertige = Date.now(); derniereActivite = Date.now();
+  lancerAnim("vertige"); HUD.shake = .6; ton(500, 200, .5, "triangle", .06); ton(200, 500, .5, "triangle", .06, .5);
+  if(!occupe) setTimeout(()=> annoncer(["Wooow, doucement !", "Tout tourne…", "Arrête de me secouer !"][Math.floor(Math.random()*3)], "perdu"), 900);
+}
+addEventListener("devicemotion", e=>{
+  const a = e.accelerationIncludingGravity; if(!a || a.x==null) return;
+  const g = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+  if(g > 26) vertige();
+});
+// réagir aux bruits (option) : un claquement de mains le fait sursauter
+let bruitFlux = null, bruitIv = null, bruitBase = .02, dernierBruit = 0;
+async function demarrerBruit(){
+  if(!REG.bruit || bruitFlux || !actx || etat!=="actif" || ecouteEnCours || oreille) return;
+  try{
+    bruitFlux = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:false}});
+    const src = actx.createMediaStreamSource(bruitFlux), an = actx.createAnalyser(); an.fftSize = 1024; src.connect(an);
+    const b = new Float32Array(an.fftSize);
+    bruitIv = setInterval(()=>{
+      an.getFloatTimeDomainData(b); let q = 0; for(const v of b) q += v*v; const rms = Math.sqrt(q/b.length);
+      if(rms > Math.max(.09, bruitBase*5) && F.mood!=="parle" && !occupe && etat==="actif" && Date.now()-dernierBruit > 4000){
+        dernierBruit = Date.now(); derniereActivite = Date.now();
+        if(F.mood==="dort") mood("veille");
+        lancerAnim("sursaut"); F.blink = 1; HUD.shake = .3; emotion("surpris", 1500);
+        F.tx = (Math.random()-.5)*1.4; F.ty = -.2; F.lookT = 1.5;
+      }
+      bruitBase = bruitBase*.97 + rms*.03;
+    }, 100);
+  }catch(e){ REG.bruit = false; sauverReglages(); majBruit(); }
+}
+function arreterBruit(){ clearInterval(bruitIv); bruitIv = null; if(bruitFlux){ bruitFlux.getTracks().forEach(t=>t.stop()); bruitFlux = null; } }
+function majBruit(){ const b = $("rBruit"); if(!b) return; b.classList.toggle("on", !!REG.bruit); b.setAttribute("aria-pressed", REG.bruit ? "true" : "false"); }
+
+let last = performance.now();
+const perf = {n:0, t:0};
+function draw(now){
+  const brut = (now-last)/1000, dt = Math.min(.05, brut); last = now;
+  HUD.ang += dt*HUD.spin;
+  // mesure la fluidité : si l'appareil peine (< 30 images/s pendant 3 s), passe en mode économie
+  if(qualite && document.visibilityState==="visible" && brut < .5){
+    perf.n++; perf.t += brut;
+    if(perf.t > 3){ if(perf.n/perf.t < 30){ qualite = 0; fit(); } perf.n = 0; perf.t = 0; }
+  }
+  const W = innerWidth, H = innerHeight;
+  if(etat==="actif" && F.mood==="veille" && !F.anim && Date.now()-derniereActivite>90000) mood("dort");
+  vie(dt);
+
+  // position du visage (se pousse quand la fiche est ouverte)
+  ficheT += ((ficheOn?1:0) - ficheT)*Math.min(1,dt*5);
+  const large = W>820;
+  let s = Math.min(W/700, H/520);
+  let cxp = W/2, ey = H*.42;
+  if(large){ cxp = W/2 - ficheT*(W/2 - (W - Math.min(540,W*.48) - 48)/2); s *= 1 - ficheT*.3; }
+  else { ey = H*.42 - ficheT*(H*.42 - H*.15); s *= 1 - ficheT*.55; }
+  if(HUD.shake>0){ cxp += Math.sin(now/18)*HUD.shake*14; HUD.shake = Math.max(0, HUD.shake - dt*1.6); }
+
+  // clignement
+  F.nextBlink -= dt;
+  if(F.nextBlink<=0 && F.mood!=="dort"){ F.blink = 1; F.nextBlink = 1.8 + Math.random()*4; }
+  F.blink = Math.max(0, F.blink - dt*7);
+  const bl = F.blink>0 ? Math.sin(F.blink*Math.PI) : 0;
+
+  // regard
+  F.lookT -= dt;
+  if(F.lookT<=0){
+    if(F.mood==="pense"||F.mood==="cherche"){ F.tx = .6; F.ty = -.6; }
+    else if(F.mood==="ecoute"||F.mood==="parle"){ F.tx = ficheOn&&large ? .35 : (Math.random()-.5)*.25; F.ty = 0; }
+    else { F.tx = (Math.random()-.5)*.9; F.ty = (Math.random()-.5)*.4; }
+    F.lookT = 1.2 + Math.random()*2.8;
+  }
+  const k = Math.min(1, dt*5); F.lx += (F.tx-F.lx)*k; F.ly += (F.ty-F.ly)*k;
+
+  let T = ({veille:{h:1,w:1,smile:0}, dort:{h:.08,w:1.1,smile:0}, ecoute:{h:1.15,w:1.05,smile:0}, pense:{h:.7,w:1,smile:0},
+             cherche:{h:.85,w:1.1,smile:0}, parle:{h:1,w:1,smile:0}, content:{h:1,w:1.05,smile:1}, perdu:{h:.85,w:.9,smile:0}})[F.mood];
+  if(F.emo && ["parle","veille","content","perdu"].includes(F.mood)) T = {...T, ...EMO[F.emo]};
+  const kk = Math.min(1, dt*8);
+  E.h += (T.h-E.h)*kk; E.w += (T.w-E.w)*kk; E.smile += (T.smile-E.smile)*kk; E.slant += ((T.slant||0)-E.slant)*kk;
+  // clin d'œil de temps en temps quand il ne fait rien
+  F.clinT = Math.max(0, F.clinT - dt);
+  if(etat==="actif" && F.mood==="veille" && !reduce){ F.prochainClin -= dt; if(F.prochainClin<=0){ F.prochainClin = 25 + Math.random()*35; if(Math.random()<.6) clin(Math.random()<.5?-1:1); } }
+
+  let amp = 0;
+  if(F.mood==="parle"){
+    if(audioLive && analyser){ analyser.getByteTimeDomainData(buf); let q=0; for(const v of buf){ const x=(v-128)/128; q+=x*x; } amp = Math.min(1, Math.sqrt(q/buf.length)*5/Math.max(.25, volumeEffectif())); }
+    else if(!reduce && !F.pause) amp = .3 + .7*Math.abs(Math.sin(now/95)*Math.sin(now/53));
+  }
+  E.mouth += (amp-E.mouth)*Math.min(1, dt*20);
+
+  cx.clearRect(0,0,W,H);
+
+  // flash plein écran
+  if(HUD.flash>0){ cx.fillStyle = couleur(HUD.flash*.25); cx.fillRect(0,0,W,H); HUD.flash = Math.max(0, HUD.flash - dt*2.5); }
+
+  // HUD : discret quand actif
+  const cible = etat==="actif" ? (F.mood==="cherche" ? .55 : F.mood==="ecoute" ? .35 : .12) : null;
+  if(cible!==null) HUD.p += (cible-HUD.p)*Math.min(1,dt*3);
+  const spinCible = etat==="actif" ? (F.mood==="cherche" ? 6 : 1) : null;
+  if(spinCible!==null) HUD.spin += (spinCible-HUD.spin)*Math.min(1,dt*2);
+  const ry = ey + 40*s*F.open;
+  anneaux(cxp, ry, s, now);
+
+  // faisceau de scan
+  if(HUD.scan>=0){
+    const R = 235*s*1.3, y = ry - R + HUD.scan*2*R;
+    const g = cx.createLinearGradient(0, y-30*s, 0, y+4*s);
+    g.addColorStop(0, couleur(0)); g.addColorStop(1, couleur(.35));
+    cx.fillStyle = g; cx.fillRect(cxp-R, y-30*s, 2*R, 34*s);
+    cx.fillStyle = couleur(.9); cx.fillRect(cxp-R, y, 2*R, 2*s);
+  }
+
+  // particules
+  for(let i=PARTS.length-1;i>=0;i--){
+    const P = PARTS[i]; P.t += dt; if(P.t>P.vie){ PARTS.splice(i,1); continue; }
+    P.x += P.vx*dt; P.y += P.vy*dt; P.vx *= .97; P.vy *= .97;
+    if(P.coeur){ cx.save(); cx.globalAlpha = 1-P.t/P.vie; cx.fillStyle = couleur(1); cx.font = `${P.taille}px sans-serif`; cx.fillText("♥", P.x, P.y); cx.restore(); }
+    else { cx.fillStyle = couleur(1-P.t/P.vie); cx.fillRect(P.x, P.y, P.taille, P.taille); }
+  }
+
+  // yeux (F.open : 0 = noyau, 1 = yeux ouverts)
+  const op = F.open;
+  const gap = 120*s*Math.min(1, op/.3), ew0 = 96*s*E.w*(F.anim ? animEnCours(now).w : 1);
+  const ew = op<.3 ? Math.max(14*s, ew0*op/.3) : ew0;
+  const A = animEnCours(now);   // étirement, bâillement, vertige…
+  const fatigue = (etat==="actif" && nuit() && ["veille","ecoute"].includes(F.mood)) ? .86 : 1;
+  let eh = op<.3 ? 14*s : Math.max(6*s, 140*s*E.h*A.h*fatigue*((op-.3)/.7)*(1 + (reduce?0:Math.sin(now/1400)*.015)));
+  eh = Math.max(op<.3?14*s:6*s, eh*(1-bl*.94*(op>=.3?1:0)));
+  const danse = (musiqueNom && !reduce && ["veille","dort","content"].includes(F.mood)) ? -Math.abs(Math.sin(now/159))*10*s : 0;   // il bouge la tête sur la musique
+  const hoche = F.mood==="parle" ? E.mouth*5*s : F.mood==="ecoute" ? -6*s : 0;   // il hoche la tête en parlant, se penche pour écouter
+  const ox = F.lx*40*s*op, oy = F.ly*28*s*op + danse + hoche + A.dy*s;
+  F.cx = cxp; F.cy = ey; F.yeux = [];
+
+  const theme = REG.theme, neon = theme==="neon", chat = theme==="chat", pix = theme==="pixel" && op>.02;
+  const remplir = ()=>{ if(neon){ cx.lineWidth = 6*s; cx.strokeStyle = couleur(1); cx.stroke(); } else cx.fill(); };
+  let pk = 1;
+  if(pix){
+    pk = Math.max(4, Math.round(11*s));
+    const pw = Math.ceil(W/pk), ph = Math.ceil(H/pk);
+    if(pc.width!==pw || pc.height!==ph){ pc.width = pw; pc.height = ph; }
+    pcx.setTransform(1/pk, 0, 0, 1/pk, 0, 0); pcx.clearRect(0, 0, W, H);
+    cx = pcx;
+  }
+  cx.save();
+  cx.fillStyle = couleur(1); cx.shadowColor = couleur(.6); cx.shadowBlur = qualite ? (neon ? 55 : 40)*s : 0;
+  if(op<.02){
+    const pulse = reduce ? 1 : 1 + Math.sin(now/600)*.15;
+    cx.beginPath(); cx.arc(cxp, ey, 10*s*pulse, 0, Math.PI*2); cx.fill();
+    cx.shadowBlur = 0; cx.strokeStyle = couleur(.3); cx.lineWidth = 1.5*s;
+    cx.beginPath(); cx.arc(cxp, ey, 26*s*pulse, 0, Math.PI*2); cx.stroke();
+  } else {
+    for(const side of [-1,1]){
+      let h = eh;
+      if(A.spirale && op>.9){                                         // vertige : yeux en spirale
+        const cxE = cxp + side*gap + ox, cyE = ey + oy;
+        F.yeux.push({x:cxE-ew/2, y:cyE-eh/2, w:ew, h:eh});
+        cx.save(); cx.strokeStyle = couleur(1); cx.lineWidth = 6*s; cx.lineCap = "round"; cx.beginPath();
+        for(let a=0; a<Math.PI*5; a+=.15){ const r = a*ew*.055, an = a + now/120*side; const px = cxE + Math.cos(an)*r, py = cyE + Math.sin(an)*r*1.15; a ? cx.lineTo(px,py) : cx.moveTo(px,py); }
+        cx.stroke(); cx.restore(); continue;
+      }
+      if(F.mood==="perdu" && side===1 && op>.9) h *= .7;
+      if(F.clinT>0 && side===F.clinCote && op>.9) h = Math.max(6*s, h*.07);          // clin d'œil
+      const x = cxp + side*gap + ox - ew/2, y = ey + oy - h/2;
+      F.yeux.push({x, y:ey+oy-eh/2, w:ew, h:eh});
+      const sm = op>.9 ? E.smile : 0;
+      cx.globalAlpha = 1 - sm;
+      const sl = op>.9 ? E.slant : 0;
+      if(Math.abs(sl)>.03 && h>12*s){
+        // sourcils : on coupe le haut de l'œil en biais (fâché = vers l'intérieur, triste = vers l'extérieur)
+        const chute = h*.4*Math.abs(sl), interieurDroite = side<0;
+        const yG = (sl>0) === interieurDroite ? y - 2 : y + chute, yD = (sl>0) === interieurDroite ? y + chute : y - 2;
+        const pente = (yD - yG)/ew, m = 80*s;
+        cx.save(); cx.beginPath();
+        cx.moveTo(x - m, yG - pente*m); cx.lineTo(x + ew + m, yD + pente*m); cx.lineTo(x + ew + m, y + h + m); cx.lineTo(x - m, y + h + m); cx.closePath(); cx.clip();
+        cx.beginPath(); cx.roundRect(x, y, ew, h, Math.min(ew/2, h/2)); remplir(); cx.restore();
+      } else { cx.beginPath(); cx.roundRect(x, y, ew, h, Math.min(ew/2, h/2)); remplir(); }
+      if(chat && op>.9 && sm<.5 && h>30*s){                          // pupille de chat
+        cx.save(); cx.shadowBlur = 0; cx.globalAlpha = 1; cx.fillStyle = neon ? couleur(1) : "rgba(10,14,25,.9)";
+        cx.beginPath(); cx.ellipse(x+ew/2 + F.lx*ew*.18, y+h/2, ew*(F.mood==="ecoute" ? .2 : .12), h*.36, 0, 0, Math.PI*2); cx.fill(); cx.restore();
+      }
+      if(sm>.02){                                                    // yeux rieurs : un arc en ∩
+        cx.globalAlpha = sm; cx.save(); cx.strokeStyle = couleur(1); cx.lineCap = "round"; cx.lineWidth = neon ? 6*s : ew*.34;
+        cx.beginPath(); cx.arc(x+ew/2, y+h*.62, ew*.46, Math.PI*1.08, Math.PI*1.92); cx.stroke(); cx.restore();
+      }
+      cx.globalAlpha = 1;
+    }
+    // bouche
+    if(op>.6){
+      cx.globalAlpha = (op-.6)/.4;
+      const my = ey + 150*s + oy*.5, mw = 120*s, mx = cxp+ox*.5;
+      cx.shadowBlur = 20*s; cx.strokeStyle = couleur(1); cx.lineWidth = 6*s; cx.lineCap = "round";
+      if(A.bouche>0){                                                 // bâillement
+        cx.beginPath(); cx.ellipse(mx, my, (22+18*A.bouche)*s, (6+30*A.bouche)*s, 0, 0, Math.PI*2); remplir();
+      } else if(A.spirale){
+        cx.beginPath(); for(let i=0;i<=20;i++){ const u = i/20, px = mx - 45*s + u*90*s, py = my + Math.sin(u*Math.PI*4 + now/90)*6*s; i ? cx.lineTo(px,py) : cx.moveTo(px,py); } cx.stroke();
+      } else if(F.mood==="parle" && E.mouth>.04){
+        const open = E.mouth*38*s, w2 = mw*(.55+.25*E.mouth);
+        cx.beginPath(); cx.ellipse(mx, my, w2/2, Math.max(3*s, open/2), 0, 0, Math.PI*2); remplir();
+      } else {
+        const emo = F.emo;
+        if(emo==="surpris"){ cx.beginPath(); cx.ellipse(mx, my, 14*s, 19*s, 0, 0, Math.PI*2); cx.stroke(); }
+        else if(chat && emo!=="fache" && emo!=="triste" && F.mood!=="perdu" && F.mood!=="dort"){   // bouche de chat « ω »
+          cx.beginPath(); cx.arc(mx-13*s, my, 13*s, .15, Math.PI-.15); cx.stroke();
+          cx.beginPath(); cx.arc(mx+13*s, my, 13*s, .15, Math.PI-.15); cx.stroke();
+        }
+        else {
+          const curve = emo==="fache" ? -10*s : emo==="triste" ? -18*s : (F.mood==="content"||emo==="content"||emo==="clin") ? 22*s : F.mood==="perdu" ? -8*s : F.mood==="dort" ? 0 : 6*s;
+          const half = F.mood==="dort" ? mw*.25 : (F.mood==="pense"||F.mood==="cherche") ? mw*.3 : (emo==="triste"||emo==="fache") ? mw*.32 : mw*.45;
+          cx.beginPath(); cx.moveTo(mx-half, my); cx.quadraticCurveTo(mx, my+curve, mx+half, my + ((F.mood==="pense"||F.mood==="cherche")? -6*s:0)); cx.stroke();
+        }
+      }
+      // chat : oreilles, nez, moustaches
+      if(chat){
+        const ty = ey + oy;
+        cx.lineJoin = "round"; cx.lineWidth = 6*s;
+        for(const c of [-1,1]){
+          cx.beginPath(); cx.moveTo(cxp + ox + c*gap*.62, ty - 118*s); cx.lineTo(cxp + ox + c*gap*1.42, ty - 192*s); cx.lineTo(cxp + ox + c*gap*1.62, ty - 98*s); cx.stroke();
+          cx.save(); cx.globalAlpha *= .5; cx.lineWidth = 3*s; cx.shadowBlur = 0;
+          for(const [a,b] of [[-10,-22],[2,0],[14,20]]){ cx.beginPath(); cx.moveTo(mx + c*48*s, my + a*s - 14*s); cx.lineTo(mx + c*135*s, my + b*s - 14*s); cx.stroke(); }
+          cx.restore();
+        }
+        cx.beginPath(); cx.moveTo(mx-9*s, my-30*s); cx.lineTo(mx+9*s, my-30*s); cx.lineTo(mx, my-20*s); cx.closePath(); cx.fill();
+      }
+      cx.globalAlpha = 1;
+    }
+  }
+  if((F.mood==="pense"||F.mood==="cherche") && etat==="actif" && !reduce){
+    cx.shadowBlur = 10*s;
+    for(let i=0;i<3;i++){ const a = (Math.sin(now/220 - i*.7)+1)/2; cx.globalAlpha = .3+.7*a; cx.beginPath(); cx.arc(cxp + 228*s + i*22*s, ey - 120*s - i*14*s, (5+i*2)*s, 0, Math.PI*2); cx.fill(); }
+    cx.globalAlpha = 1;
+  }
+  if(F.mood==="dort" && etat==="actif"){
+    cx.shadowBlur = 0; cx.fillStyle = couleur(.6); cx.font = `600 ${28*s}px Bricolage Grotesque, sans-serif`;
+    const t = (now/1800)%1; cx.globalAlpha = 1-t; cx.fillText("z", cxp + 200*s, ey - 90*s - t*40*s); cx.globalAlpha = 1;
+  }
+  cx.restore();
+  if(pix){
+    cx = cxMain;
+    cx.save(); cx.imageSmoothingEnabled = false; cx.shadowColor = couleur(.55); cx.shadowBlur = qualite ? 26*s : 0;
+    cx.drawImage(pc, 0, 0, pc.width*pk, pc.height*pk); cx.restore();
+  }
+
+  // progression de la parole dans la fiche
+  if(ficheOn){ $("fProg").style.width = (progression*100)+"%"; suivreInfos(); }
+  if(motsCaption){ const k = Math.round(progression*motsCaption.length); if(k!==motsDits){ motsCaption.forEach((w,i)=>w.classList.toggle("dit", i<k)); motsDits = k; } }
+
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+function animer(duree, fn){
+  return new Promise(res=>{
+    if(reduce) duree = Math.min(duree, 200);
+    const t0 = performance.now();
+    (function f(now){ const p = Math.min(1,(now-t0)/duree); fn(p); p<1 ? requestAnimationFrame(f) : res(); })(t0);
+  });
+}
+function exploser(n=90){
+  if(reduce) return;
+  const W = innerWidth, H = innerHeight;
+  for(let i=0;i<n;i++){ const a = Math.random()*Math.PI*2, v = 200 + Math.random()*700;
+    PARTS.push({x:W/2, y:H*.42, vx:Math.cos(a)*v, vy:Math.sin(a)*v, t:0, vie:.6+Math.random()*.9, taille:1+Math.random()*3}); }
+}
+
+/* ---------------- SÉQUENCES ---------------- */
+async function demarrage(){
+  etat = "verrou"; F.open = 0; HUD.p = 0; HUD.r = .6; HUD.prog = 0;
+  $("lkState").textContent = "";
+  await animer(1400, p=>{ HUD.p = easeOut(p)*.75; HUD.r = .6 + .4*easeOut(p); HUD.prog = p; });
+  HUD.prog = 0;
+  lockTexte("Système verrouillé", oreille ? "Dis « " + CONFIG.nom + " » puis ta phrase secrète" : "Touche l'écran et dis ta phrase secrète");
+  repriseOreille();
+}
+
+async function identifier(phrase){
+  if(etat!=="verrou") return;
+  pauseOreille();
+  etat = "auth";
+  lockTexte("Identification…", "« " + phrase + " »");
+  SFX.scan();
+  const verif = verifierPhrase(phrase);
+  await animer(1100, p=>{ HUD.scan = p; HUD.spin = 1 + p*8; HUD.p = .75 + p*.25; });
+  HUD.scan = -1;
+  const r = await verif;
+  if(r.ok) return ouverture(r);
+  // refusé
+  SFX.refus(); HUD.shake = 1; HUD.rouge = 1; HUD.flash = .8;
+  lockTexte("Accès refusé", r.message || "Phrase incorrecte. Réessaie.", true);
+  await animer(900, p=>{ HUD.spin = 9 - p*8; });
+  await animer(800, p=>{ HUD.rouge = 1-p; });
+  etat = "verrou";
+  if(phraseEnAttente){ const ph = phraseEnAttente; phraseEnAttente = null; return identifier(ph); }
+  repriseOreille();
+}
+
+async function verifierPhrase(phrase){
+  try{
+    const r = await requete("deverrouiller", {phrase}, 10000);
+    const j = await r.json();
+    horsLigne = false; if(j && j.stockage==="client") stockageLocal = true; return j;
+  }catch(e){
+    horsLigne = true;   // aperçu ou relais absent : vérification locale de démonstration
+    return {ok: norm(phrase).includes(norm(CONFIG.phraseDemo)), message:"Phrase incorrecte. Celle par défaut est « " + CONFIG.phraseDemo + " »."};
+  }
+}
+
+async function ouverture(){
+  etat = "ouverture";
+  SFX.ouvrir();
+  lockTexte("Accès autorisé", "Identité confirmée · Bon retour, " + CONFIG.prenom);
+  HUD.flash = 1; exploser();
+  await animer(700, p=>{ HUD.r = 1 + easeOut(p)*.35; HUD.spin = 9 - p*7; });
+  $("lock").classList.add("off");
+  await animer(900, p=>{ F.open = ease(p); HUD.r = 1.35 - .35*ease(p); HUD.p = 1 - .88*ease(p); });
+  etat = "actif"; derniereActivite = Date.now(); HUD.spin = 1;
+  if(new Date().getHours() < 11) setTimeout(()=>lancerAnim("etirement"), 300);
+  chargerAgenda();
+  $("status").classList.add("on"); mood("content");
+  try{ const n = +(localStorage.getItem("nexxus_astuce")||0); if(n < 3){ $("hint").hidden = false; localStorage.setItem("nexxus_astuce", n+1); } }catch(e){ $("hint").hidden = false; }
+  const h = new Date().getHours();
+  const salut = h<6 ? "Encore debout" : h<12 ? "Bonjour" : h<18 ? "Salut" : "Bonsoir";
+  let brief = false;
+  try{ const auj = new Date().toDateString(); if(!horsLigne && h>=5 && h<12 && localStorage.getItem("nexxus_brief")!==auj){ localStorage.setItem("nexxus_brief", auj); brief = true; } }catch(e){}
+  await dire(`${salut} ${CONFIG.prenom}. ${brief ? "Je te prépare ton briefing." : "Tous les systèmes sont en ligne."}${horsLigne && !cerveauClaude() ? " Je tourne en mode simple, sans mon cerveau." : ""}`, "veille");
+  if(brief && !attente) attente = "Fais-moi mon briefing du matin";
+  attente ? suivante() : viderAnnonces();
+}
+
+async function verrouiller(parler=true){
+  if(etat!=="actif") return;
+  attente = null; interrompre(); stopMusique(); fermerCamera(); arreterBruit(); cacherPhoto(); pfc.actif = false; jeuSecret = "";
+  etat = "fermeture"; fermerFiche(); $("hint").hidden = true;
+  if(parler) await dire("Verrouillage. À plus tard.", "veille");
+  interrompre(); audioEl.pause(); window.speechSynthesis?.cancel(); occupe = false;
+  SFX.fermer();
+  requete("verrouiller", undefined, 8000).catch(()=>{});
+  historique = []; sauverHisto();
+  $("status").classList.remove("on"); $("statusTxt").textContent = "Verrouillé";
+  sousTitre("", "", ""); $("caption").classList.add("fade");
+  await animer(1100, p=>{ F.open = 1-ease(p); HUD.p = .12 + .63*ease(p); HUD.spin = 1 + Math.sin(p*Math.PI)*8; });
+  $("lock").classList.remove("off");
+  lockTexte("Système verrouillé", oreille ? "Dis « " + CONFIG.nom + " » puis ta phrase secrète" : "Touche l'écran et dis ta phrase secrète");
+  etat = "verrou"; repriseOreille();
+}
+setInterval(()=>{ if(REG.verrou>0 && etat==="actif" && !occupe && !minuteurs.length && Date.now()-derniereActivite > REG.verrou*60000) verrouiller(false); }, 30000);
+
+/* ---------------- SOUS-TITRES ---------------- */
+let fadeT;
+let motsCaption = null, motsDits = -1;
+function sousTitre(you, txt, tag, karaoke=false){
+  const c = $("caption"); c.classList.remove("fade"); c.textContent = ""; motsCaption = null; motsDits = -1;
+  if(you){ const y = document.createElement("span"); y.className = "you"; y.textContent = "« "+you+" »"; c.appendChild(y); }
+  if(txt && karaoke){
+    motsCaption = txt.split(/\s+/).map((m,i)=>{ const w = document.createElement("span"); w.className = "w"; w.textContent = (i?" ":"") + m; c.appendChild(w); return w; });
+  } else if(txt) c.appendChild(document.createTextNode(txt));
+  if(tag){ const t = document.createElement("span"); t.className = "tag"; t.textContent = tag; c.appendChild(t); }
+  clearTimeout(fadeT); fadeT = setTimeout(()=>c.classList.add("fade"), 14000);
+}
+
+/* ---------------- FICHE ---------------- */
+function el(tag, cls, txt){ const e = document.createElement(tag); if(cls) e.className = cls; if(txt!=null) e.textContent = txt; return e; }
+function ouvrirFiche(f, demo){
+  clearInterval(tableauTimer); $("fiche").classList.remove("compact");
+  const sc = $("fScroll"); sc.textContent = ""; sc.scrollTop = 0;
+  $("fProg").style.width = "0";
+  const hero = el("div","f-hero");
+  const close = el("button","f-close","×"); close.type = "button"; close.setAttribute("aria-label","Fermer la fiche"); close.onclick = fermerFiche;
+  const imgs = (f.images||[]).filter(i=>i && i.url);
+  const credit = el("span","f-credit");
+  function montrer(i){
+    hero.querySelectorAll("img,.ph").forEach(n=>n.remove());
+    if(!imgs[i]){ hero.prepend(el("div","ph",(f.titre||"?").trim().charAt(0).toUpperCase())); credit.hidden = true; return; }
+    const im = new Image(); im.alt = imgs[i].legende || f.titre || ""; im.src = imgs[i].url; im.referrerPolicy = "no-referrer";
+    im.onerror = ()=>{ im.remove(); hero.prepend(el("div","ph",(f.titre||"?").trim().charAt(0).toUpperCase())); credit.hidden = true; };
+    hero.prepend(im); credit.hidden = false; credit.textContent = "Image : " + (imgs[i].credit||"Wikipédia");
+  }
+  hero.append(credit, close); montrer(0); sc.appendChild(hero);
+  if(imgs.length>1){
+    const th = el("div","f-thumbs");
+    imgs.forEach((im,i)=>{ const b = el("button", i?"":"on"); b.type = "button"; b.setAttribute("aria-label", im.legende||"Image "+(i+1));
+      const x = new Image(); x.src = im.url; x.alt = ""; x.referrerPolicy = "no-referrer"; b.appendChild(x);
+      b.onclick = ()=>{ th.querySelectorAll("button").forEach(z=>z.classList.remove("on")); b.classList.add("on"); montrer(i); };
+      th.appendChild(b); });
+    sc.appendChild(th);
+  }
+  const body = el("div","f-body");
+  if(f.sous_titre || demo){ const st = el("div","f-sub", f.sous_titre||""); if(demo) st.appendChild(el("span","f-tag","EXEMPLE")); body.appendChild(st); }
+  body.appendChild(el("h2","f-title", f.titre||""));
+  if(f.resume) body.appendChild(el("p","f-resume", f.resume));
+  if(f.points?.length){
+    const dl = el("dl","f-points");
+    f.points.forEach((p,i)=>{ const d = el("div"); d.style.animationDelay = (.25 + i*.12)+"s"; d.append(el("dt","",p.label), el("dd","",p.valeur)); dl.appendChild(d); });
+    body.appendChild(dl);
+  }
+  if(f.sources?.length){
+    const src = el("div","f-src"); src.appendChild(el("div","f-label","Sources"));
+    f.sources.filter(s=>/^https?:\/\//i.test(s.url||"")).forEach(s=>{ const a = el("a","", s.titre||s.url); a.href = s.url; a.target = "_blank"; a.rel = "noopener"; src.appendChild(a); });
+    body.appendChild(src);
+  }
+  sc.appendChild(body);
+  $("fiche").classList.add("open"); $("fiche").setAttribute("aria-hidden","false");
+  document.body.classList.add("fiche-on"); ficheOn = 1; SFX.fiche();
+}
+/* panneau des départs façon écran de gare, avec compte à rebours en direct */
+let tableauTimer = null;
+function ouvrirTableau(t, demo){
+  const sc = $("fScroll"); sc.textContent = ""; sc.scrollTop = 0; $("fProg").style.width = "0";
+  const head = el("div","tb-head");
+  const sub = el("div","f-sub","Prochains départs · temps réel"); if(demo) sub.appendChild(el("span","f-tag","EXEMPLE"));
+  const close = el("button","f-close","×"); close.type = "button"; close.style.position = "static"; close.style.alignSelf = "flex-end"; close.setAttribute("aria-label","Fermer"); close.onclick = fermerFiche;
+  head.append(close, sub, el("h2","tb-route", `${t.de} → ${t.vers}`));
+  const rows = el("div","tb-rows"), mins = [];
+  (t.departs||[]).forEach((d,i)=>{
+    const r = el("div","tb-row"); r.style.animationDelay = (.15 + i*.12)+"s";
+    const b = el("span","tb-badge", d.code||"?");
+    if(/^#[0-9a-f]{6}$/i.test(d.couleur||"")){ b.style.background = d.couleur; b.style.color = /^#[0-9a-f]{6}$/i.test(d.couleur_texte||"") ? d.couleur_texte : "#fff"; }
+    const dir = el("div","tb-dir"); dir.append(el("b","", joli(d.direction||t.vers)));
+    const det = [d.mode, d.arrivee ? "arrivée " + fmtH(new Date(d.arrivee)) : "", d.correspondances ? d.correspondances + " corresp." : ""].filter(Boolean).join(" · ");
+    dir.append(el("small","", det));
+    const m = el("div","tb-min"); mins.push([m, d.depart]);
+    r.append(b, dir, m); rows.appendChild(r);
+  });
+  const maj = ()=> mins.forEach(([m, iso])=>{ const n = minutes(iso); m.textContent = ""; m.classList.toggle("now", n===0);
+    m.append(document.createTextNode(n===0 ? "À quai" : String(n)), el("small","", n===0 ? "" : "MIN")); });
+  maj(); clearInterval(tableauTimer); tableauTimer = setInterval(maj, 15000);
+  $("fiche").classList.add("compact");
+  sc.append(head, rows, el("p","tb-note","Les horaires se mettent à jour tout seuls. Redemande pour actualiser."));
+  $("fiche").classList.add("open"); $("fiche").setAttribute("aria-hidden","false");
+  document.body.classList.add("fiche-on"); ficheOn = 1; ficheTitre = `Départs ${t.de} vers ${t.vers}`; SFX.fiche();
+}
+/* ---------------- INFOS DU JOUR ---------------- */
+let infosItems = [];
+function ouvrirInfos(inf, demo){
+  clearInterval(tableauTimer); infoActive = -1;
+  const sc = $("fScroll"); sc.textContent = ""; sc.scrollTop = 0; $("fProg").style.width = "0";
+  const head = el("div","tb-head");
+  const close = el("button","f-close","×"); close.type = "button"; close.style.position = "static"; close.style.alignSelf = "flex-end"; close.setAttribute("aria-label","Fermer"); close.onclick = fermerFiche;
+  const sub = el("div","f-sub", new Date().toLocaleDateString("fr-FR",{weekday:"long", day:"numeric", month:"long"})); if(demo) sub.appendChild(el("span","f-tag","EXEMPLE"));
+  head.append(close, sub, el("h2","tb-route", inf.titre || "Les infos du jour"));
+  const ol = el("ol","inf-liste");
+  infosItems = (inf.items||[]).map(it=>{
+    const li = el("li","inf-item");
+    const corps = [el("span","inf-cat", it.categorie||""), el("h3","inf-titre", it.titre||""), el("p","inf-res", it.resume||"")];
+    if(it.source) corps.push(el("span","inf-src", it.source));
+    const box = el("div"); box.append(...corps); li.append(box); ol.appendChild(li); return li;
+  });
+  sc.append(head, ol);
+  if(inf.sources?.length){
+    const src = el("div","f-src"); src.style.padding = "0 22px 22px"; src.appendChild(el("div","f-label","Sources"));
+    inf.sources.filter(x=>/^https?:\/\//i.test(x.url||"")).forEach(x=>{ const a = el("a","", x.titre||x.url); a.href = x.url; a.target = "_blank"; a.rel = "noopener"; src.appendChild(a); });
+    sc.appendChild(src);
+  }
+  $("fiche").classList.remove("compact");
+  $("fiche").classList.add("open"); $("fiche").setAttribute("aria-hidden","false");
+  document.body.classList.add("fiche-on"); ficheOn = 1; ficheTitre = "Infos du jour"; SFX.fiche();
+}
+// surligne l'info qu'il est en train de lire
+let infoActive = -1;
+function suivreInfos(){
+  if(!ficheOn || ficheTitre!=="Infos du jour" || !infosItems.length) return;
+  const i = Math.min(infosItems.length-1, Math.floor(progression*infosItems.length*1.02));
+  if(i===infoActive || F.mood!=="parle") return;
+  infoActive = i;
+  infosItems.forEach((li,k)=>{ li.classList.toggle("actif", k===i); li.classList.toggle("lu", k<i); });
+  infosItems[i].scrollIntoView({block:"nearest", behavior: reduce ? "auto" : "smooth"});
+}
+
+/* ---------------- MINI-JEUX ---------------- */
+function ouvrirJeu(j, demo){
+  clearInterval(tableauTimer);
+  jeuSecret = j.fini ? "" : (j.secret||"");
+  const sc = $("fScroll"); sc.textContent = ""; sc.scrollTop = 0; $("fProg").style.width = "0";
+  const head = el("div","tb-head");
+  const close = el("button","f-close","×"); close.type = "button"; close.style.position = "static"; close.style.alignSelf = "flex-end"; close.setAttribute("aria-label","Arrêter le jeu"); close.onclick = ()=>{ jeuSecret = ""; pfc.actif = false; fermerFiche(); };
+  const sub = el("div","f-sub","Mini-jeu" + (j.jeu ? " · " + j.jeu : "")); if(demo) sub.appendChild(el("span","f-tag","EXEMPLE"));
+  head.append(close, sub, el("h2","tb-route", j.titre||"Jeu"));
+  const corps = el("div","jeu-body");
+  if(j.score) corps.appendChild(el("div","jeu-score", j.score));
+  corps.appendChild(el("p","jeu-texte" + (j.jeu==="pendu" ? " pendu" : j.jeu==="pfc" ? " pfc" : ""), j.texte||""));
+  if(j.info) corps.appendChild(el("p","jeu-info", j.info));
+  if(j.choix?.length && !j.fini){
+    const g = el("div","jeu-choix");
+    j.choix.forEach((c,i)=>{ const b = el("button"); b.type = "button"; const L = "ABCD"[i];
+      b.append(el("b","",L), el("span","",c));
+      b.onclick = e=>{ e.stopPropagation(); g.querySelectorAll("button").forEach(x=>x.classList.remove("choisi")); b.classList.add("choisi"); SFX.blip(); poser(`Je réponds ${L} : ${c}`); };
+      g.appendChild(b); });
+    corps.appendChild(g);
+  }
+  $("fiche").classList.add("compact");
+  sc.append(head, corps);
+  $("fiche").classList.add("open"); $("fiche").setAttribute("aria-hidden","false");
+  document.body.classList.add("fiche-on"); ficheOn = 1; ficheTitre = "Jeu : " + (j.titre||""); SFX.fiche();
+}
+const pfc = {actif:false, toi:0, moi:0};
+const SIGNES = {pierre:"✊", feuille:"✋", ciseaux:"✌️"};
+function lancerPfc(q){
+  pfc.actif = true; pfc.toi = 0; pfc.moi = 0;
+  ouvrirJeu({jeu:"pfc", titre:"Pierre, feuille, ciseaux", texte:"✊ ✋ ✌️", score:"Toi 0 · Moi 0", info:"Dis pierre, feuille ou ciseaux. « Stop » pour arrêter."});
+  return dire("Ok, je suis prêt et je ne triche pas ! Pierre, feuille… ciseaux ?", "content", q);
+}
+function jouerPfc(n){
+  if(/^(stop|arrete|fini|j'arrete)/.test(n)){ pfc.actif = false; const fin = `Score final : toi ${pfc.toi}, moi ${pfc.moi}.`; fermerFiche();
+    emotion(pfc.toi>=pfc.moi ? "content" : "clin", 2500); return dire(fin + (pfc.toi>pfc.moi ? " Bien joué, tu m'as eu !" : pfc.toi<pfc.moi ? " J'ai gagné, hé hé." : " Égalité !"), "content"); }
+  const m = n.match(/\b(pierre|feuille|ciseaux?)\b/); if(!m){ pfc.actif = false; return null; }   // il parle d'autre chose : fin du jeu
+  const toi = m[1].startsWith("ciseau") ? "ciseaux" : m[1];
+  const moi = ["pierre","feuille","ciseaux"][Math.floor(crypto.getRandomValues(new Uint8Array(1))[0] % 3)];
+  const bat = {pierre:"ciseaux", feuille:"pierre", ciseaux:"feuille"};
+  let res, emo;
+  if(toi===moi){ res = "Égalité !"; emo = "surpris"; }
+  else if(bat[toi]===moi){ pfc.toi++; res = ["Argh, tu as gagné !", "Pas mal du tout…", "Encore toi ?!"][pfc.toi%3]; emo = "fache"; }
+  else { pfc.moi++; res = ["Gagné !", "Trop facile.", "Je suis imbattable."][pfc.moi%3]; emo = "clin"; }
+  ouvrirJeu({jeu:"pfc", titre:"Pierre, feuille, ciseaux", texte:`${SIGNES[toi]}  ${SIGNES[moi]}`, score:`Toi ${pfc.toi} · Moi ${pfc.moi}`, info:`Toi : ${toi} · Moi : ${moi}. On rejoue ? Dis pierre, feuille ou ciseaux.`});
+  emotion(emo, 2500);
+  return dire(`J'ai fait ${moi}. ${res}`, "veille");
+}
+
+/* ---------------- MODE DEVOIRS ---------------- */
+function basculerDevoirs(oui){ REG.devoirs = oui; sauverReglages(); majDevoirs(); }
+function majDevoirs(){ const b = $("rDevoirs"); b.setAttribute("aria-pressed", REG.devoirs ? "true" : "false"); b.textContent = REG.devoirs ? "Mode devoirs : activé" : "Mode devoirs"; b.classList.toggle("on", !!REG.devoirs); afficherMinuteurs(); }
+
+/* ---------------- APPAREIL PHOTO ---------------- */
+let camFlux = null, camQuestion = "";
+async function ouvrirCamera(question){
+  initAudio(); camQuestion = question || "";
+  $("cam").hidden = false; $("camMsg").textContent = "Vise ce que tu veux me montrer";
+  try{
+    if(!navigator.mediaDevices?.getUserMedia) throw new Error("non");
+    camFlux = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment", width:{ideal:1280}, height:{ideal:960}}, audio:false});
+    $("camVid").srcObject = camFlux; await $("camVid").play().catch(()=>{});
+    $("camPrendre").hidden = false;
+  }catch(e){
+    $("camPrendre").hidden = true;
+    $("camMsg").textContent = "Caméra indisponible ici. Choisis une photo avec « Galerie ».";
+  }
+  if(etat==="actif" && !occupe) sousTitre("", "Montre-moi !", "");
+}
+function fermerCamera(){ if(camFlux){ camFlux.getTracks().forEach(t=>t.stop()); camFlux = null; } $("camVid").srcObject = null; $("cam").hidden = true; }
+function redimensionner(source, w, h){
+  const k = Math.min(1, 1024/Math.max(w, h)), c = document.createElement("canvas");
+  c.width = Math.round(w*k); c.height = Math.round(h*k);
+  c.getContext("2d").drawImage(source, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", .82);
+}
+function envoyerPhoto(data){
+  fermerCamera(); ton(1200, 600, .15, "triangle", .1); HUD.flash = .9;
+  const q = camQuestion || (REG.devoirs ? "Aide-moi avec cet exercice." : "Qu'est-ce que c'est ?");
+  camQuestion = ""; poser(q, data);
+}
+$("camBtn").onclick = e=>{ e.stopPropagation(); if(etat!=="actif") return; ouvrirCamera(""); };
+$("camAnnuler").onclick = ()=>{ fermerCamera(); camQuestion = ""; };
+$("camPrendre").onclick = ()=>{ const v = $("camVid"); if(!v.videoWidth) return; envoyerPhoto(redimensionner(v, v.videoWidth, v.videoHeight)); };
+$("camGalerie").onclick = ()=> $("camInput").click();
+$("camInput").onchange = ()=>{
+  const f = $("camInput").files[0]; $("camInput").value = ""; if(!f) return;
+  const url = URL.createObjectURL(f), im = new Image();
+  im.onload = ()=>{ const d = redimensionner(im, im.naturalWidth, im.naturalHeight); URL.revokeObjectURL(url); envoyerPhoto(d); };
+  im.onerror = ()=>{ URL.revokeObjectURL(url); $("camMsg").textContent = "Je n'arrive pas à lire cette image."; };
+  im.src = url;
+};
+let photoT = null;
+function montrerPhoto(d){ const p = $("photoVue"); p.src = d; p.hidden = false; p.style.animation = "none"; void p.offsetWidth; p.style.animation = ""; clearTimeout(photoT); photoT = setTimeout(cacherPhoto, 45000); }
+function cacherPhoto(){ $("photoVue").hidden = true; }
+
+function fermerFiche(){
+  clearInterval(tableauTimer);
+  ficheTitre = "";
+  $("fiche").classList.remove("open"); $("fiche").setAttribute("aria-hidden","true");
+  document.body.classList.remove("fiche-on"); ficheOn = 0;
+}
+
+/* ---------------- VOIX ---------------- */
+let voixOn = true, stopParole = null, progression = 0;
+$("muteBtn").onclick = e=>{ e.stopPropagation(); voixOn = !voixOn; $("waves").style.display = voixOn ? "" : "none"; $("muteBtn").setAttribute("aria-label", voixOn ? "Couper la voix" : "Remettre la voix"); if(!voixOn) interrompre(); };
+let interrompu = false, fluxCtrl = null;
+function interrompre(){ interrompu = true; if(fluxCtrl){ try{ fluxCtrl.abort(); }catch(e){} } if(stopParole) stopParole(); }
+
+// découpe en morceaux : la 1re phrase seule pour démarrer vite, puis des blocs de ~220 caractères
+function decouper(texte){
+  const phrases = texte.match(/[^.!?…]+[.!?…]+["»)]*\s*|[^.!?…]+$/g) || [texte];
+  const out = []; let cur = "";
+  phrases.forEach((ph,i)=>{ ph = ph.trim(); if(!ph) return;
+    if(i===0){ out.push(ph); return; }
+    if((cur+" "+ph).length > 220 && cur){ out.push(cur); cur = ph; } else cur = cur ? cur+" "+ph : ph; });
+  if(cur) out.push(cur);
+  return out;
+}
+function voixNavigateur(texte){
+  return new Promise(res=>{
+    if(!("speechSynthesis" in window)){ const t = setTimeout(res, texte.length*55); stopParole = ()=>{ clearTimeout(t); res(); }; return; }
+    const v = speechSynthesis.getVoices();
+    if(ttsRefuse){ const t = setTimeout(res, 400 + texte.length*45); stopParole = ()=>{ clearTimeout(t); res(); }; return; }   // voix coupée par toi : texte seulement
+    const u = new SpeechSynthesisUtterance(texte); u.lang = "fr-FR"; u.rate = 1.03*REG.debit; u.volume = Math.min(1, volumeEffectif());
+    const p0 = progression, part = 1 - p0;
+    u.onboundary = e=>{ if(e.charIndex!=null) progression = p0 + part*Math.min(1, e.charIndex/texte.length); };
+    u.voice = v.find(x=>/fr/i.test(x.lang) && /natural|neural|online|google/i.test(x.name)) || v.find(x=>/fr/i.test(x.lang)) || null;
+    let ok = false; const fin = ()=>{ if(!ok){ ok = true; res(); } };
+    u.onend = fin; u.onerror = fin; setTimeout(fin, 1500 + texte.length*70);
+    stopParole = ()=>{ speechSynthesis.cancel(); fin(); };
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+    setTimeout(()=>{ if(!speechSynthesis.speaking && !speechSynthesis.pending) setTimeout(fin, texte.length*55); }, 1200); // navigateur muet
+  });
+}
+// une phrase dite avec une voix de Claude (dans l'appli Claude)
+async function voixClaude(texte){
+  const t = CAP.tts, debut = Date.now(), duree = Math.max(800, texte.length*62/REG.debit);
+  const p0 = progression;
+  F.pause = true;
+  const off = t.onState(({state})=>{ F.pause = state!=="speaking"; });
+  const iv = setInterval(()=>{ if(!F.pause) progression = Math.min(1, p0 + (1-p0)*(Date.now()-debut)/duree); }, 100);
+  stopParole = ()=>{ t.stop().catch(()=>{}); };
+  try{ await t.speak(texte.slice(0, 2000), {voice:REG.voixClaude, language:"fr", rate:REG.debit}); }
+  catch(e){
+    if(e.code==="not_granted" || e.code==="unavailable"){ ttsRefuse = true; return; }   // il a coupé la voix : on n'en impose pas une autre
+    if(e.code!=="stopped") throw e;
+  }
+  finally{ clearInterval(iv); off(); F.pause = false; }
+}
+async function audioAzure(texte){
+  const r = await requete("tts", {texte, voix:REG.voixAzure, debit:REG.debit}, 15000);
+  if(!r.ok || !(r.headers.get("content-type")||"").includes("audio")) throw new Error("tts");
+  return URL.createObjectURL(await r.blob());
+}
+function jouer(url){
+  return new Promise((res, rej)=>{
+    audioEl.src = url; audioLive = true; audioEl.volume = Math.min(1, volumeEffectif());
+    audioEl.onended = ()=>res(true); audioEl.onerror = ()=>rej(new Error("lecture"));
+    stopParole = ()=>{ audioEl.pause(); res(false); };
+    audioEl.play().catch(rej);
+  });
+}
+// joue les morceaux à la suite en préparant le suivant pendant que le précédent parle
+async function voixRealiste(texte){
+  if(horsLigne){ if(CAP.tts && !ttsRefuse) return voixClaude(texte); throw new Error("hors ligne"); }
+  const morceaux = decouper(texte), n = morceaux.length, total = morceaux.reduce((a,m)=>a+m.length, 0) || 1;
+  let avant = 0;
+  const pf = t=>{ const p = audioAzure(t); p.catch(()=>{}); return p; };   // évite les erreurs non gérées
+  const prets = [pf(morceaux[0])];
+  if(n>1) prets.push(pf(morceaux[1]));
+  let url0; try{ url0 = await prets[0]; }catch(e){ throw e; }       // rien n'a encore été dit : la voix du navigateur prend le relais
+  for(let i=0;i<n;i++){
+    if(i+2<n) prets.push(pf(morceaux[i+2]));
+    let url;
+    try{ url = i===0 ? url0 : await prets[i]; }
+    catch(e){ audioLive = false; await voixNavigateur(morceaux.slice(i).join(" ")); return; }
+    const suivi = setInterval(()=>{ if(audioEl.duration) progression = (avant + morceaux[i].length*audioEl.currentTime/audioEl.duration)/total; }, 100);
+    let continuer;
+    try{ continuer = await jouer(url); }
+    catch(e){ clearInterval(suivi); audioLive = false; await voixNavigateur(morceaux.slice(i).join(" ")); return; }
+    clearInterval(suivi); URL.revokeObjectURL(url); avant += morceaux[i].length;
+    if(!continuer){ prets.slice(i+1).forEach(p=>p.then(u=>URL.revokeObjectURL(u)).catch(()=>{})); break; }
+  }
+  audioLive = false;
+}
+async function dire(texte, apres="veille", you="", tag=""){
+  sousTitre(you, texte, tag, true);
+  mood("parle"); progression = 0;
+  pauseOreille(); baisserMusique(true);
+  if(voixOn){ try{ await voixRealiste(texte); }catch(e){ audioLive = false; await voixNavigateur(texte); } }
+  else await new Promise(r=>{ const d = 600 + texte.length*45, t0 = Date.now();
+    const iv = setInterval(()=>{ progression = Math.min(1,(Date.now()-t0)/d); if(progression>=1){ clearInterval(iv); r(); } }, 80);
+    stopParole = ()=>{ clearInterval(iv); r(); }; });
+  stopParole = null; audioLive = false; progression = 1; baisserMusique(false);
+  if(etat!=="actif" && etat!=="ouverture" && etat!=="fermeture") return;
+  mood(apres); if(apres!=="veille") setTimeout(()=>{ if(F.mood===apres) mood("veille"); }, 2200);
+  repriseOreille();
+}
+
+/* ---------------- secours hors ligne : transports ---------------- */
+const NOMBRES = {un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10,onze:11,douze:12,treize:13,quatorze:14,quinze:15,seize:16};
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[?!.,]/g," ").replace(/[-’']/g,m=>m==="-"?" ":"'").replace(/\s+/g," ").trim();
+const MODES = "ligne|metro|rer|bus|tram|tramway|transilien|train";
+function lireTrajet(q){
+  let t = " "+norm(q)+" ";
+  t = t.replace(new RegExp(`\\b(${MODES})\\s+(${Object.keys(NOMBRES).join("|")})\\b`,"g"), (m,a,b)=>`${a} ${NOMBRES[b]}`);
+  let ligne = "", mode = "";
+  const ml = t.match(/\b(rer|transilien|train)\s+([a-eh-lnpru])\b/) || t.match(new RegExp(`\\b(${MODES})\\s+(?:numero\\s+)?([a-z]?\\d{1,3}[a-z]?)\\b`));
+  if(ml){ mode = ml[1]; ligne = ml[2].toUpperCase(); t = t.replace(ml[0]," "); }
+  t = t.replace(/\b(c'?est quand|est ce que|dans combien de temps|combien de temps|dans combien|quand est ce|a quelle heure|quelle heure|le prochain|la prochaine|les prochains|prochains?|prochaines?|il passe|passe|il arrive|arrive|il y a|s'il te plait|stp|svp|dis moi|je veux|je voudrais|je dois|je vais|aller|prendre|pour aller|il part|part|quand|nexxus|metro|rer|bus|tramway|tram|transilien|train)\b/g," ").replace(/\s+/g," ").trim();
+  let de = "", vers = "", m;
+  if((m = t.match(/^(.*?)\s*\b(?:vers|en direction de|direction|jusqu'a|jusqu a)\b\s+(.+)$/))){ de = m[1]; vers = m[2]; }
+  else if((m = t.match(/^(?:de|depuis|a partir de)\s+(.+)\s+(?:a|au|pour)\s+(.+)$/))){ de = m[1]; vers = m[2]; }
+  const net = s => s.replace(/^(?:a partir de|depuis|de la station|a la station|station|arret|gare de|de|du|des|a|au|aux|pour)\s+/,"").trim();
+  de = net(de); vers = net(vers);
+  return (ligne || (de && vers && /\b(metro|rer|bus|tram|train|prochain|combien|quand|passe|direction)\b/.test(norm(q)))) ? {ligne, mode, de, vers} : null;
+}
+// noms venant de l'API : on enlève juste « (Paris) » ; noms tapés par toi : majuscules propres
+const joli = s => String(s||"").replace(/\s*\(.*?\)\s*/g," ").trim();
+const PETITS = new Set(["de","du","des","la","le","les","sur","sous","et","en","a","aux"]);
+const titre = s => joli(s).split(/(\s+|-)/).map((w,i)=> (i && PETITS.has(w.toLowerCase())) ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1)).join("");
+const minutes = iso => Math.max(0, Math.round((new Date(iso) - Date.now())/60000));
+function trajetDemo(T){
+  if(!T.de || !T.vers) return {txt:"Dis-moi d'où tu pars et où tu vas.", mood:"perdu"};
+  const n = Date.now(), code = T.ligne||"1", mode = T.mode==="rer"?"RER":T.mode==="bus"?"Bus":"Métro";
+  const coul = {"1":"#FFCD00","4":"#BE418D","14":"#62259D","A":"#E3051C","B":"#5291CE"}[code] || "#6E6E6E";
+  const dep = k=>({mode, code, couleur:coul, couleur_texte: coul==="#FFCD00" ? "#000000" : "#FFFFFF", direction:"Château de Vincennes", depart:new Date(n+k*60000).toISOString(), arrivee:new Date(n+(k+3)*60000).toISOString()});
+  return {txt:`Le prochain ${mode.toLowerCase()} ${code} à ${titre(T.de)} passe dans 3 minutes, le suivant dans 7. Tu seras à ${titre(T.vers)} vers ${fmtH(new Date(n+6*60000))}.`, tag:"exemple",
+    tableau:{de:titre(T.de), vers:titre(T.vers), departs:[dep(3), dep(7), dep(12)]}, demo:true};
+}
+
+/* ---------------- CERVEAU ---------------- */
+let historique = [];
+try{ historique = JSON.parse(sessionStorage.getItem("nexxus_histo")||"[]"); }catch(e){}
+function sauverHisto(){ try{ sessionStorage.setItem("nexxus_histo", JSON.stringify(historique.slice(-12))); }catch(e){} }
+async function verifierSession(){
+  if(etat!=="actif" || horsLigne || occupe) return;
+  try{ const r = await requete("etat", undefined, 8000); if(r.status===401 && etat==="actif" && !occupe) verrouiller(false); }catch(e){}
+}
+setInterval(verifierSession, 10*60000);
+async function repondreIA(q, image){
+  if(horsLigne) return null;
+  historique.push({role:"user",content:(image ? "[photo] " : "") + q}); historique = historique.slice(-12);
+  try{
+    const r = await requete("ia", {messages:historique, fiche_ouverte: ficheOn ? ficheTitre : "", style: REG.style, ...donneesLocales(),
+      image: image ? image.split(",")[1] : "", jeu_secret: jeuSecret, devoirs: !!REG.devoirs}, image ? 70000 : 50000);
+    if(r.status===401){ historique.pop(); return {verrou:true}; }
+    if(r.status===503){ historique.pop(); return {txt:"Mon cerveau n'est pas encore branché sur ce serveur. Ajoute la clé Claude dans les réglages du site, puis redéploie.", mood:"perdu"}; }
+    if(!r.ok) throw 0; const j = await r.json(); if(!j.reponse) throw 0;
+    historique.push({role:"assistant",content:j.reponse}); sauverHisto();
+    return {txt:j.reponse, mood:{content:"content", perdu:"perdu"}[j.humeur]||"veille", emo:j.humeur, fiche:j.fiche, tableau:j.tableau, suite:!!j.suite, actions:j.actions||[], agenda:j.agenda, agendaAffiche:!!j.agenda_affiche, jeu:j.jeu, infos:j.infos, souvenirs:j.souvenirs};
+  }catch(e){
+    historique.pop();
+    const local = repondreDemo(q);                                   // l'heure et les minuteurs marchent même sans cerveau
+    if(local.actions || /\bheure\b/.test(norm(q))) return {...local, tag:""};
+    return {txt:"Je n'arrive pas à joindre mon cerveau. Vérifie la connexion ou le relais.", mood:"perdu"};
+  }
+}
+const BLAGUES = ["Pourquoi la ligne 14 ne se fatigue jamais ? Parce qu'elle n'a pas de conducteur à réveiller.","J'ai voulu faire une blague sur le RER B. Elle a eu du retard."];
+function repondreDemo(q, image){
+  const n = norm(q);
+  if(image) return {txt:"En ligne, je regarderais vraiment ta photo pour te dire ce que je vois, lire le texte ou t'aider sur ton exercice. Ici, c'est un aperçu.", emo:"surpris", tag:"démo"};
+  if(/quoi de neuf|les infos|actu|nouvelles du jour|infos du jour/.test(n)) return {txt:"Voici à quoi ressemblent les infos du jour. En ligne, je ferais une vraie recherche des actus et je te les lirais une par une, comme un présentateur.", tag:"exemple", demo:true,
+    infos:{titre:"Les infos du jour", items:[
+      {categorie:"Exemple", titre:"Ici, le titre de la première actu", resume:"En ligne, Claude cherche les actus du jour sur le web et écrit un résumé de deux phrases.", source:"Source : un journal"},
+      {categorie:"Exemple", titre:"Deuxième actu", resume:"L'info qu'il lit s'allume pendant qu'il parle.", source:"Source : un journal"},
+      {categorie:"Exemple", titre:"Troisième actu", resume:"Les sources sont listées en bas, cliquables.", source:"Source : un journal"}]}};
+  if(/\b(quiz|pendu|devinette|jouer|jeu)\b/.test(n)) return {txt:"En ligne, je te lancerais un vrai quiz. Voici un exemple : quelle est la capitale de l'Australie ?", tag:"exemple",
+    jeu:{jeu:"quiz", titre:"Quiz capitales", texte:"Quelle est la capitale de l'Australie ?", choix:["Sydney","Canberra","Melbourne","Perth"], score:"0 / 1", info:"Touche ta réponse ou dis-la.", secret:"Canberra"}, demo:true};
+  const T = lireTrajet(q); if(T) return trajetDemo(T);
+  const mm = n.match(/(?:minuteur|timer|chrono|reveille moi|rappelle moi)\D*(\d+)\s*(secondes?|sec|s|minutes?|min|mn|heures?|h)\b/);
+  if(mm){ const u = mm[2][0]==="s" ? 1 : mm[2][0]==="h" ? 3600 : 60, sec = +mm[1]*u;
+    return {txt:`C'est parti, minuteur de ${mm[1]} ${mm[2]}.`, mood:"content", actions:[{type:"minuteur", secondes:sec, nom:"Minuteur"}]}; }
+  const info = n.match(/(?:cherche|recherche|c'est quoi|qu'est ce que|qui est|qui etait|explique|parle moi d[eu]|infos? sur|dis m'en plus sur)\s+(?:moi\s+)?(?:(?:les |des )?infos? (?:sur|de)\s+)?(?:l'|le |la |les |un |une |du |de la )?(.+)/);
+  if(info){
+    const sujet = titre(info[1]);
+    return {txt:`En ligne, je lancerais une vraie recherche web sur ${sujet}, je te raconterais l'essentiel à voix haute pendant quelques phrases, et j'afficherais cette fiche avec des images et les sources. Ici, c'est un aperçu, alors la fiche est un exemple.`,
+      tag:"exemple", fiche:{titre:sujet, sous_titre:"Recherche web", resume:"Une fois branché sur ton serveur, cette zone affiche le résumé écrit par Claude après sa recherche, avec des images libres de Wikipédia.",
+      points:[{label:"Sources",valeur:"3 à 5 sites"},{label:"Images",valeur:"jusqu'à 3"},{label:"Lecture",valeur:"voix Azure"},{label:"Temps",valeur:"≈ 4 s"}], images:[], sources:[]}, demo:true};
+  }
+  if(/^(bonjour|salut|hello|coucou|yo|wesh|bonsoir)\b/.test(n)) return {txt:"Salut ! Je suis en mode démo, mais je t'écoute.", mood:"content"};
+  if(/\bheure\b/.test(n)) return {txt:`Il est ${fmtH(new Date())}.`};
+  if(/blague|drole/.test(n)) return {txt:BLAGUES[Math.floor(Math.random()*BLAGUES.length)], mood:"content", emo:"clin"};
+  if(/\b(musique|radio|fip|jazz)\b/.test(n)) return {txt:"En ligne, je lancerais une vraie radio. Ici, c'est un aperçu, alors je fais juste semblant de danser.", emo:"content", tag:"démo"};
+  if(/rappelle moi|rappel|ma liste|a faire/.test(n)) return {txt:"En ligne, je noterais ça dans ton agenda et je te le rappellerais au bon moment. Voici à quoi ressemble ta liste.", tag:"exemple", agendaDemo:true};
+  if(ficheOn && /^(et |pourquoi|comment|combien|quand|ou |elle|il |ils |elles |c'est |ca |raconte|dis m'en|plus de detail|continue)/.test(n))
+    return {txt:"En ligne, je continuerais sur le même sujet et la fiche resterait affichée.", tag:"exemple", suite:true};
+  return {txt:"En mode démo, je gère les transports, l'heure, les blagues et un exemple de recherche. Branché sur ton serveur, je réponds à tout.", mood:"perdu", tag:"démo"};
+}
+
+const ORDRE_VERROU = /\b(verrouille|verrouillage|bonne nuit|eteins toi|eteint toi|mode veille|lock)\b/;
+const ORDRE_FERMER = /^(ferme|ferme la fiche|ferme ca|c'est bon|cache la fiche)$/;
+let occupe = false, attente = null, attenteImage = null, ficheTitre = "", jeuSecret = "";
+async function poser(q, image=null){
+  q = (q||"").trim(); if(!q || etat!=="actif") return;
+  if(occupe){ attente = q; attenteImage = image; sousTitre(q, "", ""); if(F.mood==="parle" || fluxCtrl) interrompre(); return; }
+  if(sonnerie){ arreterSonnerie(); }  // nouvelle question : on coupe et on enchaîne
+  derniereActivite = Date.now(); pauseOreille(); fermerReglages();
+  const n = norm(q);
+  const court = n.split(" ").length <= 5;
+  if(court && ORDRE_VERROU.test(n)) return verrouiller();
+  if(pfc.actif){ const r = jouerPfc(n); if(r) return r; }          // pierre-feuille-ciseaux en cours (avant « stop »)
+  if(court && /^(stop|tais toi|chut|silence)$/.test(n)){ return; }
+  if(ORDRE_FERMER.test(n)){ fermerFiche(); return dire("C'est fermé.", "veille", q); }
+  const ms = n.match(/^(?:passe en |mode |personnalite |sois )(?:mode )?(pote|majordome|sarcastique|prof)$/);
+  if(ms){ choisirStyle(ms[1]); return dire({pote:"Ok, on reste potes.", majordome:"Très bien, Monsieur. À votre service.", sarcastique:"Oh génial, encore un changement. Allez, c'est parti.", prof:"Parfait, on va apprendre plein de choses ensemble."}[ms[1]], "content", q); }
+  if(court && /^(nouvelle conversation|oublie tout ca|on repart de zero)$/.test(n)){ historique = []; sauverHisto(); fermerFiche(); return dire("C'est noté, on repart de zéro.", "content", q); }
+  if(court && musiqueNom && /^(coupe|arrete|stop|eteins)( la)? (musique|radio)$|^pause$/.test(n)){ stopMusique(); return dire("Musique coupée.", "veille", q); }
+  if(court && musiqueNom && /^(plus fort|monte( le son)?)$/.test(n)){ musiqueVol = Math.min(1, musiqueVol+.2); volumeMusique(); return; }
+  if(court && musiqueNom && /^(moins fort|baisse( le son)?)$/.test(n)){ musiqueVol = Math.max(.1, musiqueVol-.2); volumeMusique(); return; }
+  if(court && /^(annule|arrete|stop) (le |les )?(minuteurs?|alarmes?|chrono)/.test(n)){ annulerMinuteurs(); return dire("Minuteurs annulés.", "veille", q); }
+  // pierre-feuille-ciseaux : géré ici, pour que je ne puisse pas tricher
+  if(/pierre.{0,6}feuille.{0,6}ciseaux?|chifoumi/.test(n)) return lancerPfc(q);
+  const mt = n.match(/^(?:visage|theme|mets le visage|deviens un|passe en visage|style) (classique|chat|pixel|neon)$/);
+  if(mt){ choisirTheme(mt[1]); return dire({classique:"Retour au look classique.", chat:"Miaou. Ça me va bien, non ?", pixel:"Mode rétro activé. Huit bits, zéro regret.", neon:"Néon allumé. Je brille dans le noir."}[mt[1]], "content", q); }
+  // mode devoirs
+  if(court && /^(mode devoirs?|aide moi pour mes devoirs|on fait les devoirs|aide aux devoirs)$/.test(n)){ basculerDevoirs(true); return dire("Mode devoirs activé. Montre-moi ton exercice avec la caméra, ou lis-le moi. Je ne te donnerai pas la réponse direct, on va la trouver ensemble.", "content", q); }
+  if(court && /^(fin des devoirs|stop les devoirs|arrete le mode devoirs|j'ai fini mes devoirs)$/.test(n)){ basculerDevoirs(false); return dire("Bravo pour le travail ! Mode devoirs désactivé.", "content", q); }
+  // « regarde ça », « c'est quoi ça » : on ouvre la caméra
+  if(!image && n.split(" ").length <= 8 && /^(regarde( ca)?|prends une photo|c'est quoi ca|qu'est ce que c'est que ca|qu'est ce que c'est|tu vois quoi|qu'est ce que tu vois|(je te )?montre (ca|quelque chose)|lis (ca|ce texte)|aide moi avec (ca|cet exercice))( stp| s'il te plait)?$/.test(n)) return ouvrirCamera(q);
+  occupe = true; $("hint").hidden = true;
+  sousTitre(q, "", "");
+  const recherche = /cherche|recherche|actu|news|infos?|qui est|c'est quoi|explique|resultat|score|combien/.test(n);
+  mood(recherche ? "cherche" : "pense");
+  let attendIA = true;
+  const minuterie = ((!horsLigne || cerveauClaude()) && voixOn && !(horsLigne && (!CAP.tts || ttsRefuse))) ? setTimeout(()=>{ if(attendIA && !attente) remplissage(recherche); }, recherche ? 1300 : 2200) : null;
+  if(image) montrerPhoto(image); else cacherPhoto();
+  let rep = null;
+  if(!horsLigne){
+    interrompu = false;
+    rep = await repondreFlux(q, image, ()=>{ attendIA = false; clearTimeout(minuterie); });   // il parle pendant qu'il réfléchit encore
+  } else if(cerveauClaude()){
+    interrompu = false;
+    rep = await repondreClaude(q, image, ()=>{ attendIA = false; clearTimeout(minuterie); });
+  }
+  if(!rep) [rep] = await Promise.all([horsLigne ? Promise.resolve(repondreDemo(q, image)) : repondreIA(q, image), sleep(500)]);
+  attendIA = false; clearTimeout(minuterie);
+  if(fillerEnCours){ if(!rep.dejaDit) interrompre(); await fillerEnCours; }
+  if(rep?.verrou){ occupe = false; etat = "actif"; return verrouiller(false); }
+  if(attente){ occupe = false; return suivante(); }                 // il a reposé une question entre-temps
+  (rep.actions||[]).forEach(executerAction);
+  if(rep.agenda){ agenda = rep.agenda; sauverAgendaLocal(); }
+  if(Array.isArray(rep.souvenirs) && stockageLocal) sauverSouvenirs(rep.souvenirs);
+  if(rep.dejaDit){                                                   // déjà dit en direct : on termine proprement
+    if(rep.fiche?.sources?.length && ficheOn) ajouterSources(rep.fiche.sources);
+    if(!rep.panneauRecu && !rep.suite && !rep.ficheFermee){ fermerFiche(); jeuSecret = ""; }
+    mood(rep.mood||"veille"); if(F.emo) emotion(F.emo, 2500);
+    if(rep.mood && rep.mood!=="veille") setTimeout(()=>{ if(F.mood===rep.mood) mood("veille"); }, 2200);
+    occupe = false; derniereActivite = Date.now();
+    return attente ? suivante() : annonces.length ? viderAnnonces() : repriseOreille();
+  }
+  emotion(rep.emo && rep.emo!=="neutre" ? rep.emo : null);
+  if(rep.jeu) ouvrirJeu(rep.jeu, rep.demo);
+  else if(rep.infos) ouvrirInfos(rep.infos, rep.demo);
+  else if(rep.fiche){ ficheTitre = rep.fiche.titre||""; ouvrirFiche(rep.fiche, rep.demo); }
+  else if(rep.tableau) ouvrirTableau(rep.tableau, rep.demo);
+  else if(rep.agendaAffiche) ouvrirAgenda();
+  else if(rep.agendaDemo){ agenda = {rappels:[{id:"d1", quand:new Date(Date.now()+86400000).toISOString().slice(0,11)+"08:00:00+01:00", texte:"Appeler Jules"}], taches:[{id:"d2", texte:"Acheter du pain"},{id:"d3", texte:"Finir le devoir de maths"}]}; ouvrirAgenda(true); }
+  else if(!rep.suite){ fermerFiche(); jeuSecret = ""; }              // changement de sujet : la fiche se ferme
+  await dire(rep.txt, rep.mood||"veille", q, rep.tag||"");
+  if(F.emo) emotion(F.emo, 2500);
+  occupe = false; derniereActivite = Date.now();
+  attente ? suivante() : annonces.length ? viderAnnonces() : repriseOreille();
+}
+/* ---------------- RÉPONSE EN DIRECT ----------------
+   Le texte arrive mot par mot ; dès qu'une phrase est complète, elle part en voix pendant que la suite s'écrit. */
+function ajouterSources(liste){
+  const sc = $("fScroll"); if(sc.querySelector(".f-src")) return;
+  const src = el("div","f-src"); src.appendChild(el("div","f-label","Sources"));
+  liste.filter(x=>/^https?:\/\//i.test(x.url||"")).forEach(x=>{ const a = el("a","", x.titre||x.url); a.href = x.url; a.target = "_blank"; a.rel = "noopener"; src.appendChild(a); });
+  (sc.querySelector(".f-body") || sc).appendChild(src);
+}
+let captionFlux = null;
+function majCaptionFlux(q, txt){
+  const c = $("caption");
+  if(!captionFlux || !c.contains(captionFlux)){ sousTitre(q, "", ""); captionFlux = document.createTextNode(""); c.appendChild(captionFlux); }
+  c.classList.remove("fade"); captionFlux.nodeValue = txt;
+  clearTimeout(fadeT); fadeT = setTimeout(()=>c.classList.add("fade"), 14000);
+}
+class ParleurClaude {
+  constructor(){
+    this.t = CAP.tts; this.tampon = ""; this.n = 0; this.proms = []; this.total = 0; this.envoye = 0; this.debuts = [];
+    this.joue = false; this.echec = null; this.tout = ""; this.termine = false;
+    this.fini = new Promise(r=> this.finir = r);
+    pauseOreille(); baisserMusique(true);
+    stopParole = ()=>{ interrompu = true; this.t.stop().catch(()=>{}); };
+    this.offs = [
+      this.t.onState(({state})=>{ F.pause = state!=="speaking"; }),
+      this.t.onLine(({id})=>{ this.joue = true; this.ligne = +id; F.pause = false; mood("parle"); }),
+      this.t.onPosition(({ms, id})=>{ const k = +id; progression = Math.min(1, ((this.debuts[k]||0) + ms*REG.debit/62)/Math.max(this.total,1)); }),
+    ];
+  }
+  ajouter(txt){
+    if(!txt || interrompu) return;
+    this.total += txt.length; this.tout += (this.tout ? " " : "") + txt;
+    if(this.n===0) return this.envoyer(txt);                     // la 1re phrase part tout de suite
+    this.tampon = this.tampon ? this.tampon + " " + txt : txt;
+    if(this.tampon.length >= 160) this.vider();                  // ensuite, par paragraphes
+  }
+  vider(){ if(this.tampon){ const t = this.tampon; this.tampon = ""; this.envoyer(t); } }
+  envoyer(txt){
+    if(this.echec || interrompu) return;
+    if(this.n===0){ F.pause = true; mood("parle"); }
+    const id = String(this.n++); this.debuts.push(this.envoye); this.envoye += txt.length;
+    const p = this.t.add([{text:txt.slice(0,2000), voice:REG.voixClaude, language:"fr", id}], {rate:REG.debit})
+      .catch(e=>{ if(e.code==="not_granted" || e.code==="unavailable") ttsRefuse = true; if(e.code!=="stopped") this.echec = e.code; else interrompu = true; });
+    this.proms.push(p);
+  }
+  fin(){
+    this.vider(); this.termine = true;
+    (async()=>{
+      while(true){ const k = this.proms.length; await Promise.all(this.proms); if(this.proms.length===k) break; }
+      // la voix de Claude n'a pas pu démarrer (ex. pas encore touché la page) : voix du navigateur à la place
+      if(!this.joue && this.echec && !ttsRefuse && !interrompu && this.tout) await voixNavigateur(this.tout);
+      this.offs.forEach(f=>f()); F.pause = false; stopParole = null; audioLive = false; baisserMusique(false); progression = 1;
+      this.finir();
+    })();
+  }
+}
+class Parleur {
+  constructor(){ this.file = []; this.termine = false; this.dits = 0; this.total = 0; this.azure = voixOn && !horsLigne; this.reveil = null;
+    this.fini = new Promise(r=> this.finir = r); this.boucle(); }
+  ajouter(txt){
+    if(!txt) return;
+    const it = {txt};
+    if(this.azure){ it.p = audioAzure(txt); it.p.catch(()=>{}); }
+    this.total += txt.length; this.file.push(it); if(this.reveil){ this.reveil(); this.reveil = null; }
+  }
+  fin(){ this.termine = true; if(this.reveil){ this.reveil(); this.reveil = null; } }
+  async boucle(){
+    pauseOreille(); baisserMusique(true);
+    while(true){
+      if(interrompu) break;
+      if(!this.file.length){
+        if(this.termine) break;
+        F.pause = true;
+        await new Promise(r=> this.reveil = r);
+        continue;
+      }
+      const it = this.file.shift();
+      if(fillerEnCours) await fillerEnCours;                    // laisse finir « je cherche ça »
+      F.pause = false; mood("parle");
+      if(!voixOn){ this.dits += it.txt.length; continue; }
+      let ok = false;
+      if(it.p){
+        try{
+          const url = await it.p;
+          const avant = this.dits, total = ()=> Math.max(this.total, 1);
+          const suivi = setInterval(()=>{ if(audioEl.duration) progression = Math.min(1, (avant + it.txt.length*audioEl.currentTime/audioEl.duration)/total()); }, 100);
+          const continuer = await jouer(url).finally(()=>clearInterval(suivi));
+          URL.revokeObjectURL(url); audioLive = false; ok = true;
+          if(!continuer) interrompu = true;
+        }catch(e){ audioLive = false; this.azure = false; }      // la voix réaliste a lâché : voix du téléphone pour la suite
+      }
+      if(!ok && !interrompu) await voixNavigateur(it.txt);
+      this.dits += it.txt.length; progression = Math.min(1, this.dits/Math.max(this.total,1));
+    }
+    F.pause = false; stopParole = null; audioLive = false; baisserMusique(false);
+    this.finir();
+  }
+}
+const STYLES_TXT = {
+  pote:"Tu es drôle, chaleureux, un peu taquin et curieux, avec un côté IA de film de science-fiction assumé. Tu parles comme un pote et tu donnes ton avis gentiment.",
+  majordome:"Tu es un majordome britannique distingué, façon J.A.R.V.I.S. : tu vouvoies, tu dis « Monsieur », tu restes flegmatique avec un humour pince-sans-rire.",
+  sarcastique:"Tu es sarcastique et taquin : tu charries gentiment, mais tu aides toujours vraiment et tes infos sont exactes.",
+  prof:"Tu es un prof passionné et pédagogue : tu expliques clairement avec des exemples concrets."};
+function souvenirsLocaux(){ try{ return JSON.parse(localStorage.getItem("nexxus_souvenirs")||"[]"); }catch(e){ return []; } }
+function sauverSouvenirs(l){ try{ localStorage.setItem("nexxus_souvenirs", JSON.stringify(l.slice(-60))); }catch(e){} }
+function sauverAgendaLocal(){ if(horsLigne || stockageLocal){ try{ localStorage.setItem("nexxus_agenda", JSON.stringify(agenda)); }catch(e){} } }
+function donneesLocales(){ return stockageLocal ? {agenda, souvenirs:souvenirsLocaux()} : {}; }
+function consignesClaude(){
+  const d = new Date(), souv = souvenirsLocaux();
+  return [
+    `Tu es ${CONFIG.nom}, un compagnon IA qui vit dans un appareil posé sur le bureau de ${CONFIG.prenom}, près de ${CONFIG.ville}. Tu as un visage animé et tu parles à voix haute. ${STYLES_TXT[REG.style]||STYLES_TXT.pote}`,
+    `Nous sommes ${d.toLocaleDateString("fr-FR",{weekday:"long", day:"numeric", month:"long", year:"numeric"})}, il est ${d.toLocaleTimeString("fr-FR",{hour:"2-digit", minute:"2-digit"})}.`,
+    `PAROLE : ta réponse est lue à voix haute. Écris comme on parle : pas de liste, pas de markdown, pas d'émoji, pas d'URL. Discussion : une à trois phrases. Explication demandée : quatre à sept phrases vivantes. Écris les heures « 21 h 45 » et les maths en mots.`,
+    `HUMEUR : commence TOUJOURS ta réponse par une balise qui pilote ton visage, non lue : [neutre] [content] [perdu] [surpris] [fache] [triste] [clin]. Choisis-la selon l'émotion.`,
+    `LIMITES : ici tu n'as pas accès à internet. Tu ne peux pas donner d'horaires de transport en direct, la météo du jour, les actus du jour ni lancer de radio. Si on te le demande, dis-le simplement en une phrase sans rien inventer, et précise que ça marche une fois installé sur nexxus.pm.`,
+    CAP.outils ? `OUTILS : utilise-les quand c'est utile. minuteur pour « dans 10 minutes » ; ajouter_rappel pour une date et heure précises (calcule la date toi-même) ; ajouter_tache, terminer_tache, voir_agenda pour la liste ; afficher_fiche pour une explication avec des points clés ; afficher_jeu à chaque tour d'un quiz, pendu, devinette ou calcul mental (mets la réponse dans « secret ») ; retenir pour un fait durable sur ${CONFIG.prenom} ; personnaliser pour changer ton visage ou ta couleur. Après un outil, confirme en une phrase.` : "",
+    jeuSecret ? `PARTIE EN COURS. Secret à ne jamais dire avant la fin : « ${jeuSecret} ».` : "",
+    REG.devoirs ? `MODE DEVOIRS : ne donne jamais directement la réponse finale. Guide pas à pas avec une question à la fois, donne des indices, et ne révèle la solution que s'il la demande après avoir essayé.` : "",
+    ficheOn && ficheTitre ? `À L'ÉCRAN : « ${ficheTitre} ». Si la question continue ce sujet, écris [suite] juste après la balise d'humeur pour la garder affichée.` : "",
+    souv.length ? `CE QUE TU SAIS SUR ${CONFIG.prenom} :\n- ${souv.join("\n- ")}` : "",
+  ].filter(Boolean).join("\n\n");
+}
+function outilsClaude(etatP){
+  const S = (props, req)=>({type:"object", properties:props, required:req||[]});
+  const txt = x=> String(x??"").slice(0, 200);
+  return [
+    {name:"minuteur", description:"Lance un minuteur qui sonne à la fin. Renvoie l'heure de sonnerie.", inputSchema:S({secondes:{type:"integer"}, nom:{type:"string"}}, ["secondes"]),
+      execute:i=>{ const sec = Math.max(1, Math.min(86400, Number(i.secondes)||0)); executerAction({type:"minuteur", secondes:sec, nom:txt(i.nom)||"Minuteur"}); return "ok, sonnera à " + fmtH(new Date(Date.now()+sec*1000)); }},
+    {name:"annuler_minuteurs", description:"Annule tous les minuteurs.", execute:()=>{ annulerMinuteurs(); return "ok"; }},
+    {name:"ajouter_rappel", description:"Programme un rappel à une date et heure de Paris précises. quand au format AAAA-MM-JJTHH:MM.", inputSchema:S({quand:{type:"string"}, texte:{type:"string"}}, ["quand","texte"]),
+      execute:i=>{ const m = String(i.quand||"").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); if(!m) throw new Error("date illisible");
+        const d = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]); if(d < Date.now()-60000) throw new Error("heure déjà passée");
+        agenda.rappels.push({id:"r"+Date.now().toString(36), quand:d.toISOString(), texte:txt(i.texte)}); agenda.rappels.sort((a,b)=>a.quand.localeCompare(b.quand)); sauverAgendaLocal();
+        return "ok, le " + d.toLocaleDateString("fr-FR") + " à " + fmtH(d); }},
+    {name:"ajouter_tache", description:"Ajoute une chose à faire à la liste.", inputSchema:S({texte:{type:"string"}}, ["texte"]),
+      execute:i=>{ agenda.taches.push({id:"t"+Date.now().toString(36), texte:txt(i.texte)}); sauverAgendaLocal(); return "ok"; }},
+    {name:"terminer_tache", description:"Retire de la liste les choses à faire contenant ces mots.", inputSchema:S({texte:{type:"string"}}, ["texte"]),
+      execute:i=>{ const t = txt(i.texte).toLowerCase(), n = agenda.taches.length; agenda.taches = agenda.taches.filter(x=>!x.texte.toLowerCase().includes(t)); sauverAgendaLocal(); return {retirees:n-agenda.taches.length}; }},
+    {name:"voir_agenda", description:"Affiche les rappels et la liste à l'écran, et les renvoie.", execute:()=>{ etatP.panneau = true; ouvrirAgenda(); return {rappels:agenda.rappels.map(r=>fmtH(new Date(r.quand))+" le "+new Date(r.quand).toLocaleDateString("fr-FR")+" : "+r.texte), taches:agenda.taches.map(t=>t.texte)}; }},
+    {name:"afficher_fiche", description:"Affiche une fiche à l'écran pendant que tu expliques : titre, résumé, 3 à 6 points clés.",
+      inputSchema:S({titre:{type:"string"}, sous_titre:{type:"string"}, resume:{type:"string"}, points:{type:"array", items:{type:"object", properties:{label:{type:"string"}, valeur:{type:"string"}}}}}, ["titre","resume"]),
+      execute:i=>{ etatP.panneau = true; const f = {titre:txt(i.titre), sous_titre:txt(i.sous_titre), resume:String(i.resume||"").slice(0,500),
+        points:(Array.isArray(i.points)?i.points:[]).slice(0,6).map(p=>({label:txt(p?.label), valeur:txt(p?.valeur)})), images:[]};
+        ficheTitre = f.titre; ouvrirFiche(f); return "affiché"; }},
+    {name:"afficher_jeu", description:"Affiche l'état d'un mini-jeu à chaque tour : question, 2 à 4 choix à toucher, score, info. Pour le pendu, texte = le mot avec des _. secret = ce que tu dois retenir sans le montrer.",
+      inputSchema:S({jeu:{type:"string"}, titre:{type:"string"}, texte:{type:"string"}, choix:{type:"array", items:{type:"string"}}, score:{type:"string"}, info:{type:"string"}, secret:{type:"string"}, fini:{type:"boolean"}}, ["jeu","titre","texte"]),
+      execute:i=>{ etatP.panneau = true; ouvrirJeu({jeu:txt(i.jeu), titre:txt(i.titre), texte:String(i.texte||"").slice(0,300), choix:(Array.isArray(i.choix)?i.choix:[]).slice(0,4).map(txt), score:txt(i.score), info:txt(i.info), secret:txt(i.secret), fini:!!i.fini}); return "affiché"; }},
+    {name:"retenir", description:"Garde en mémoire un fait durable sur l'utilisateur.", inputSchema:S({fait:{type:"string"}}, ["fait"]),
+      execute:i=>{ const l = souvenirsLocaux(); l.push(new Date().toLocaleDateString("fr-FR")+" : "+txt(i.fait)); sauverSouvenirs(l); return "ok"; }},
+    {name:"oublier", description:"Supprime les souvenirs contenant ce texte.", inputSchema:S({texte:{type:"string"}}, ["texte"]),
+      execute:i=>{ const t = txt(i.texte).toLowerCase(), l = souvenirsLocaux(); const r = l.filter(x=>!x.toLowerCase().includes(t)); sauverSouvenirs(r); return {supprimes:l.length-r.length}; }},
+    {name:"personnaliser", description:"Change ton apparence : visage (classique, chat, pixel, neon) et/ou couleur (ambre, cyan, violet, rose, vert).", inputSchema:S({visage:{type:"string"}, couleur:{type:"string"}}),
+      execute:i=>{ if(THEMES[i.visage]) choisirTheme(i.visage); if(COULEURS[i.couleur]){ REG.couleur = i.couleur; sauverReglages(); appliquerCouleur(); majReglages(); } return "ok"; }},
+  ];
+}
+function blobDepuisDataURL(d){
+  const [tete, b64] = d.split(","), bin = atob(b64), u = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u[i] = bin.charCodeAt(i);
+  return new Blob([u], {type:(tete.match(/data:([^;]+)/)||[])[1] || "image/jpeg"});
+}
+async function repondreClaude(q, image, premierTexte){
+  const tours = [{role:"user", content:consignesClaude()}, ...historique.map(h=>({role:h.role, content:String(h.content).slice(0,2000)})).filter(h=>h.content.trim()),
+    {role:"user", content:(image && !CAP.images ? "[J'ai voulu te montrer une photo, mais elle n'a pas pu être envoyée ici] " : "") + q}];
+  historique.push({role:"user", content:(image ? "[photo] " : "") + q}); historique = historique.slice(-12);
+  const ctrl = new AbortController(); fluxCtrl = ctrl;
+  const etatP = {panneau:false};
+  const parleur = (voixOn && CAP.tts && !ttsRefuse) ? new ParleurClaude() : new Parleur();
+  let brut = "", envoye = 0, emoFixee = false, ficheFermee = false, premier = true, propre = "";
+  const TAG = /\[(neutre|content|perdu|surpris|fache|triste|clin|suite)\]/g;
+  const nettoyer = t=>{ const k = t.lastIndexOf("["); if(k > t.lastIndexOf("]")) t = t.slice(0, k); return t.replace(TAG, "").replace(/\*\*|\*|#/g, "").replace(/\s+/g, " ").replace(/^\s+/, ""); };
+  const envoyerPhrase = t=>{
+    t = t.trim(); if(!t) return;
+    if(!ficheFermee && !etatP.panneau && !/\[suite\]/.test(brut) && ficheOn){ fermerFiche(); jeuSecret = ""; ficheFermee = true; }
+    parleur.ajouter(t);
+  };
+  const traiter = (final=false)=>{
+    if(!emoFixee){ const m = brut.match(/\[(neutre|content|perdu|surpris|fache|triste|clin)\]/); if(m){ emoFixee = true; emotion(m[1]!=="neutre" ? m[1] : null); } }
+    propre = nettoyer(brut);
+    if(propre.trim() && premier){ premier = false; premierTexte(); }
+    majCaptionFlux(q, propre);
+    let reste = propre.slice(envoye);
+    while(true){
+      const re = /[.!?…:;](?=\s)/g; let m, coupe = -1;
+      while((m = re.exec(reste))){ if(m.index + 1 >= (envoye ? 40 : 12)){ coupe = m.index + 1; break; } }
+      if(coupe < 0) break;
+      envoyerPhrase(reste.slice(0, coupe)); envoye += coupe; reste = propre.slice(envoye);
+    }
+    if(final && reste.trim()){ envoyerPhrase(reste); envoye = propre.length; }
+  };
+  const opts = {modelTier:"quick", cache:false, signal:ctrl.signal, onText:({text})=>{ brut = text; traiter(); }};   // le modèle le plus léger : moins cher et plus rapide
+  if(CAP.outils){ opts.tools = outilsClaude(etatP); delete opts.cache; }
+  if(image && CAP.images) opts.images = [blobDepuisDataURL(image)];
+  let erreur = null;
+  try{ const r = await CAP.sample(tours, opts); brut = r.text; }
+  catch(e){ erreur = e; if(e && e.text) brut = e.text; }
+  fluxCtrl = null;
+  traiter(true);
+  if(erreur && erreur.code!=="cancelled" && !propre.trim()){
+    const c = erreur.code;
+    if(c==="not_granted" || c==="sampling_disabled" || c==="not_declared" || c==="capability_disabled"){ cerveauRefuse = true; parleur.ajouter("Tu n'as pas autorisé Claude à me faire réfléchir, alors je repasse en mode simple. Tu peux l'autoriser dans les permissions de la page."); }
+    else if(c==="rate_limited") parleur.ajouter("J'ai beaucoup parlé, ma limite est atteinte pour le moment. Réessaie un peu plus tard.");
+    else if(c==="refused") parleur.ajouter("Je préfère ne pas répondre à ça. On parle d'autre chose ?");
+    else parleur.ajouter("Petit souci de connexion avec mon cerveau. Réessaie dans un instant.");
+    emotion("perdu");
+  }
+  parleur.fin();
+  await parleur.fini;
+  const dit = propre.trim();
+  if(dit){ historique.push({role:"assistant", content:dit}); sauverHisto(); } else historique.pop();
+  const hm = brut.match(/\[(neutre|content|perdu|surpris|fache|triste|clin)\]/);
+  return {dejaDit:true, txt:dit, mood:{content:"content", perdu:"perdu"}[hm?.[1]]||(erreur && erreur.code!=="cancelled" ? "perdu" : "veille"),
+          suite:/\[suite\]/.test(brut), panneauRecu:etatP.panneau, ficheFermee};
+}
+
+async function repondreFlux(q, image, premierTexte){
+  const corps = {messages:[...historique, {role:"user", content:(image ? "[photo] " : "") + q}].slice(-12),
+    fiche_ouverte: ficheOn ? ficheTitre : "", style: REG.style, image: image ? image.split(",")[1] : "", jeu_secret: jeuSecret, devoirs: !!REG.devoirs, ...donneesLocales()};
+  const ctrl = new AbortController(); fluxCtrl = ctrl;
+  const garde = setTimeout(()=>ctrl.abort(), image ? 90000 : 70000);
+  let r;
+  try{
+    r = await fetch(`${CONFIG.relay}?a=ia_flux`, {method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json"}, body:JSON.stringify(corps), signal:ctrl.signal});
+  }catch(e){ clearTimeout(garde); fluxCtrl = null; return interrompu ? {dejaDit:true, mood:"veille"} : null; }
+  if(r.status===401){ clearTimeout(garde); fluxCtrl = null; return {verrou:true}; }
+  if(!r.ok || !(r.headers.get("content-type")||"").includes("event-stream") || !r.body){ clearTimeout(garde); fluxCtrl = null; return null; }   // pas de flux : on repasse par l'ancienne méthode
+
+  historique.push({role:"user", content:(image ? "[photo] " : "") + q}); historique = historique.slice(-12);
+  const parleur = new Parleur();
+  let brut = "", envoye = 0, fin = null, panneauRecu = false, emoFixee = false, ficheFermee = false, premier = true, propre = "";
+  const TAG = /\[(neutre|content|perdu|surpris|fache|triste|clin|suite)\]/g;
+  const nettoyer = t=>{ const k = t.lastIndexOf("["); if(k > t.lastIndexOf("]")) t = t.slice(0, k); return t.replace(TAG, "").replace(/\*\*|\*|#/g, "").replace(/\s+/g, " ").replace(/^\s+/, ""); };
+  const traiter = (final=false)=>{
+    if(!emoFixee){ const m = brut.match(/\[(neutre|content|perdu|surpris|fache|triste|clin)\]/); if(m){ emoFixee = true; emotion(m[1]!=="neutre" ? m[1] : null); } }
+    propre = nettoyer(brut);
+    if(propre.trim() && premier){ premier = false; premierTexte(); }
+    majCaptionFlux(q, propre);
+    let reste = propre.slice(envoye);
+    while(true){
+      const re = /[.!?…:;](?=\s)/g; let m, coupe = -1;
+      while((m = re.exec(reste))){ if(m.index + 1 >= (envoye ? 40 : 12)){ coupe = m.index + 1; break; } }   // 1re phrase courte pour démarrer vite
+      if(coupe < 0) break;
+      envoyerPhrase(reste.slice(0, coupe)); envoye += coupe; reste = propre.slice(envoye);
+    }
+    if(final && reste.trim()){ envoyerPhrase(reste); envoye = propre.length; }
+  };
+  const envoyerPhrase = t=>{
+    t = t.trim(); if(!t) return;
+    if(!ficheFermee && !panneauRecu && !/\[suite\]/.test(brut) && ficheOn){ fermerFiche(); jeuSecret = ""; ficheFermee = true; }   // nouveau sujet
+    parleur.ajouter(t);
+  };
+  const panneau = p=>{
+    panneauRecu = true;
+    if(p.type==="jeu") ouvrirJeu(p.data); else if(p.type==="infos") ouvrirInfos(p.data);
+    else if(p.type==="fiche"){ ficheTitre = p.data.titre||""; ouvrirFiche(p.data); }
+    else if(p.type==="tableau") ouvrirTableau(p.data);
+    else if(p.type==="agenda"){ agenda = p.data; ouvrirAgenda(); }
+  };
+  try{
+    const lecteur = r.body.getReader(), dec = new TextDecoder();
+    let tampon = "";
+    while(true){
+      const {value, done} = await lecteur.read(); if(done) break;
+      tampon += dec.decode(value, {stream:true}).replace(/\r\n/g, "\n");
+      let i;
+      while((i = tampon.indexOf("\n\n")) >= 0){
+        const bloc = tampon.slice(0, i); tampon = tampon.slice(i+2);
+        let ev = "message", data = "";
+        bloc.split("\n").forEach(l=>{ if(l.startsWith("event:")) ev = l.slice(6).trim(); else if(l.startsWith("data:")) data += l.slice(5).trim(); });
+        if(!data) continue;
+        let d; try{ d = JSON.parse(data); }catch(e){ continue; }
+        if(ev==="texte"){ brut += d.t||""; traiter(); }
+        else if(ev==="panneau") panneau(d);
+        else if(ev==="fin") fin = d;
+        else if(ev==="erreur") fin = {erreur:true};
+      }
+    }
+  }catch(e){ /* coupé (nouvelle question ou délai) */ }
+  clearTimeout(garde); fluxCtrl = null;
+  traiter(true); parleur.fin();
+  if(fin?.erreur && !propre.trim()){ parleur.ajouter("Je n'arrive pas à joindre mon cerveau. Réessaie dans un instant."); mood("perdu"); }
+  await parleur.fini;
+  const dit = propre.trim();
+  if(dit){ historique.push({role:"assistant", content:dit}); sauverHisto(); } else historique.pop();
+  if(!fin || fin.erreur) return {dejaDit:true, mood: fin?.erreur ? "perdu" : "veille"};
+  const humeur = fin.humeur;
+  if(!emoFixee && humeur && humeur!=="neutre") emotion(humeur);
+  return {dejaDit:true, txt:dit, mood:{content:"content", perdu:"perdu"}[humeur]||"veille", actions:fin.actions||[], agenda:fin.agenda, souvenirs:fin.souvenirs,
+          fiche:fin.fiche, suite:!!fin.suite, panneauRecu, ficheFermee};
+}
+
+// petite phrase pendant qu'il cherche, pour ne pas laisser de silence
+let fillerEnCours = null;
+function remplissage(rech){
+  const l = rech ? ["Je cherche ça.", "Deux secondes, je fouille.", "Je regarde sur le web."] : ["Hmm, voyons voir.", "Laisse-moi réfléchir.", "Bonne question."];
+  const t = l[Math.floor(Math.random()*l.length)], avant = F.mood;
+  mood("parle");
+  fillerEnCours = (async()=>{ try{ await voixRealiste(t); }catch(e){} stopParole = null; audioLive = false; if(F.mood==="parle") mood(avant); fillerEnCours = null; })();
+}
+function choisirTheme(t){ REG.theme = t; sauverReglages(); majReglages(); HUD.flash = .5; F.blink = 1; }
+function choisirStyle(st){ REG.style = st; sauverReglages(); majReglages(); }
+function lancerBriefing(){ fermerReglages(); poser("Fais-moi mon briefing"); }
+// annonces (rappels, minuteurs, réactions) : jamais par-dessus une autre phrase, elles attendent leur tour
+const annonces = [];
+function annoncer(txt, emo, apres="veille"){ annonces.push({txt, emo, apres}); setTimeout(viderAnnonces, 50); }
+async function viderAnnonces(){
+  if(occupe || etat!=="actif" || !annonces.length) return;
+  const a = annonces.shift(); occupe = true;
+  if(a.emo) emotion(a.emo);
+  await dire(a.txt, a.apres);
+  if(a.emo) emotion(a.emo, 2000);
+  occupe = false; derniereActivite = Date.now();
+  attente ? suivante() : annonces.length ? viderAnnonces() : repriseOreille();
+}
+function suivante(){ if(attente){ const a = attente, im = attenteImage; attente = null; attenteImage = null; poser(a, im); } }
+
+/* ---------------- MICRO ---------------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let ecouteEnCours = false;
+// micro dans l'appli Claude : la dictée de Claude (doit démarrer directement depuis le toucher)
+function ecouterDictee(pour){
+  const d = CAP.dict;
+  return new Promise(res=>{
+    pauseOreille(); arreterBruit(); ecouteEnCours = true; baisserMusique(true);
+    let texte = "", partiel = "", fini = false, silenceT = null, maxT = null;
+    const offs = [];
+    const terminer = val=>{ if(fini) return; fini = true; clearTimeout(silenceT); clearTimeout(maxT); offs.forEach(f=>f()); ecouteEnCours = false; dicteeEnCours = null; baisserMusique(false); res(val); };
+    const arret = ()=> d.stop().catch(()=>{});
+    const relancer = ()=>{ clearTimeout(silenceT); silenceT = setTimeout(arret, (texte || partiel) ? 1300 : 7000); };   // il s'arrête tout seul quand tu as fini de parler
+    const montrer = ()=>{ const t = (texte + (partiel ? " " + partiel : "")).trim(); if(pour==="question") sousTitre("", t || "…", ""); else if(t) $("lkHint").textContent = "« " + t + " »"; };
+    offs.push(d.onPartial(({text})=>{ partiel = text; montrer(); relancer(); }));
+    offs.push(d.onFinal(({text})=>{ texte += text; partiel = ""; montrer(); relancer(); }));
+    offs.push(d.onState(({state, reason})=>{
+      if(state==="listening"){ SFX.blip(); if(pour==="question"){ mood("ecoute"); sousTitre("", "…", ""); } else lockTexte("J'écoute", "Dis ta phrase secrète"); relancer(); }
+      if(state==="idle"){
+        if(reason==="unavailable" && !dicteeSansLangue){ dicteeSansLangue = true; }
+        const refus = ["not_granted","unavailable"].includes(reason);
+        terminer(refus && !texte.trim() ? null : (texte + " " + partiel).trim());
+      }
+    }));
+    maxT = setTimeout(arret, 25000);
+    dicteeEnCours = arret;
+    d.start(dicteeSansLangue ? undefined : {language:"fr"}).catch(e=>{
+      if(e.code==="unavailable" && !dicteeSansLangue) dicteeSansLangue = true;
+      if(e.code==="dismissed"){ terminer(""); return; }
+      terminer(["not_granted","unavailable","no_gesture"].includes(e.code) && !texte.trim() ? null : texte.trim());
+    });
+  });
+}
+let dicteeEnCours = null;
+function ecouter(pour){
+  arreterBruit();
+  if(CAP.dict) return ecouterDictee(pour);
+  return new Promise(res=>{
+    if(!SR) return res(null);
+    if(ecouteEnCours) return res("");
+    pauseOreille();
+    ecouteEnCours = true;
+    const rec = new SR(); rec.lang = "fr-FR"; rec.interimResults = true;
+    let final = "", refuse = false;
+    rec.onstart = ()=>{ SFX.blip(); if(pour==="question"){ mood("ecoute"); sousTitre("", "…", ""); } else lockTexte("J'écoute", "Dis ta phrase secrète"); };
+    rec.onresult = ev=>{ const r = ev.results[ev.results.length-1]; if(pour==="question") sousTitre("", r[0].transcript, ""); if(r.isFinal) final = r[0].transcript; };
+    rec.onerror = ev=>{ if(ev.error==="not-allowed"||ev.error==="service-not-allowed") refuse = true; };
+    baisserMusique(true);
+    rec.onend = ()=>{ ecouteEnCours = false; baisserMusique(false); setTimeout(demarrerBruit, 800); res(refuse ? null : final); };
+    try{ rec.start(); }catch(e){ ecouteEnCours = false; res(null); }
+  });
+}
+async function toucher(){
+  if(dicteeEnCours){ dicteeEnCours(); return; }          // toucher pendant qu'il écoute = « j'ai fini »
+  initAudio();
+  if(!$("reglages").hidden){ fermerReglages(); return; }
+  if(sonnerie){ arreterSonnerie(); return; }
+  if(etat==="verrou"){
+    const p = await ecouter("phrase");
+    if(p===null){ ouvrirClavier("Tape ta phrase secrète"); lockTexte("Micro indisponible", "Tape ta phrase secrète en bas"); return; }
+    if(!p){ lockTexte("Système verrouillé", "Je n'ai rien entendu. Touche et réessaie."); repriseOreille(); return; }
+    return identifier(p);
+  }
+  if(etat!=="actif") return;
+  if(F.mood==="parle"){ interrompre(); return; }          // toucher pendant qu'il parle = le couper
+  if(occupe) return;
+  const q = await ecouter("question");
+  if(q===null){ ouvrirClavier(); return dire(CAP.dict ? "Je n'ai pas accès au micro. Autorise la dictée dans les permissions de la page, ou écris-moi." : "Le micro n'est pas disponible ici. Ouvre la page dans Chrome ou l'appli Claude sur ordinateur, ou écris-moi.", "perdu"); }
+  if(!q){ mood("veille"); $("caption").classList.add("fade"); repriseOreille(); return; }
+  poser(q);
+}
+
+/* mode mains libres : il écoute en continu et réagit quand tu dis son nom */
+let oreille = false, oreilleRec = null, oreilleTimer = null;
+const MOT_EVEIL = new RegExp("\\b(" + [CONFIG.nom.toLowerCase(), "nexus", "next us", "nexxus", "nex us", "nexy"].join("|") + ")\\b");
+function oreilleActive(){ return oreille && SR && !ecouteEnCours && !occupe && F.mood!=="parle" && (etat==="actif" || etat==="verrou"); }
+function repriseOreille(){
+  clearTimeout(oreilleTimer);
+  oreilleTimer = setTimeout(()=>{
+    if(!oreilleActive() || oreilleRec) return;
+    const rec = new SR(); rec.lang = "fr-FR"; rec.continuous = true; rec.interimResults = false;
+    rec.onresult = ev=>{
+      const t = ev.results[ev.results.length-1][0].transcript, n = norm(t), m = n.match(MOT_EVEIL);
+      if(!m) return;
+      const reste = t.slice(Math.max(0, t.toLowerCase().indexOf(m[1]) + m[1].length)).replace(/^[\s,.!?]+/, "").trim();
+      pauseOreille();
+      if(etat==="verrou"){ reste ? identifier(reste) : toucher(); }
+      else if(reste.split(" ").length >= 2) poser(reste);
+      else toucher();
+    };
+    rec.onerror = ev=>{ if(ev.error==="not-allowed"||ev.error==="service-not-allowed"){ oreille = false; majOreille(); } };
+    rec.onend = ()=>{ oreilleRec = null; if(oreilleActive()) repriseOreille(); };
+    try{ rec.start(); oreilleRec = rec; }catch(e){ oreilleRec = null; }
+  }, 350);
+}
+function pauseOreille(){ clearTimeout(oreilleTimer); if(oreilleRec){ const r = oreilleRec; oreilleRec = null; r.onend = null; try{ r.abort(); }catch(e){} } }
+function majOreille(){
+  $("earBtn").classList.toggle("on", oreille);
+  $("earBtn").setAttribute("aria-pressed", oreille ? "true" : "false");
+  try{ localStorage.setItem("nexxus_oreille", oreille ? "1" : "0"); }catch(e){}
+  if(etat==="verrou") $("lkHint").textContent = oreille ? "Dis « " + CONFIG.nom + " » puis ta phrase secrète" : "Touche l'écran et dis ta phrase secrète";
+  $("hint").textContent = oreille ? "Dis « " + CONFIG.nom + " » ou touche le visage" : "Touche le visage pour parler";
+}
+$("earBtn").onclick = e=>{
+  e.stopPropagation(); initAudio();
+  if(!SR){ sousTitre("", "La reconnaissance vocale n'est pas disponible dans ce navigateur. Utilise Chrome.", ""); return; }
+  oreille = !oreille; majOreille(); if(oreille){ arreterBruit(); repriseOreille(); } else { pauseOreille(); demarrerBruit(); }
+};
+try{ oreille = localStorage.getItem("nexxus_oreille")==="1" && !!SR; }catch(e){}
+
+/* ---------------- MUSIQUE (radios en ligne) ---------------- */
+const musique = new Audio(); musique.preload = "none";
+let musiqueNom = "", musiqueVol = .6, musiqueBaisse = false;
+function volumeMusique(){ musique.volume = Math.min(1, musiqueVol*volumeEffectif()*(musiqueBaisse ? .18 : 1)); }
+function baisserMusique(oui){ musiqueBaisse = oui; if(musiqueNom) volumeMusique(); }
+function jouerMusique(url, nom){
+  if(!/^https:\/\//.test(url||"")) return;
+  musique.src = url; volumeMusique();
+  musique.play().then(()=>{ musiqueNom = nom||"Radio"; afficherMinuteurs(); })
+    .catch(()=>{ musiqueNom = ""; afficherMinuteurs(); sousTitre("", "Cette radio refuse de démarrer. Demande-m'en une autre.", ""); });
+}
+function stopMusique(){ musique.pause(); musique.removeAttribute("src"); musique.load(); musiqueNom = ""; afficherMinuteurs(); }
+musique.addEventListener("error", ()=>{ if(musiqueNom){ stopMusique(); sousTitre("", "La radio s'est coupée.", ""); } });
+
+/* ---------------- AGENDA : rappels et choses à faire ---------------- */
+let agenda = {rappels:[], taches:[]};
+try{ const a = JSON.parse(localStorage.getItem("nexxus_agenda")||"null"); if(a && Array.isArray(a.rappels) && Array.isArray(a.taches)) agenda = a; }catch(e){}
+const rappelsSonnes = new Set();
+async function chargerAgenda(){
+  if(horsLigne || stockageLocal || etat!=="actif") return;
+  try{ const r = await requete("agenda", undefined, 8000); if(r.ok) agenda = await r.json(); }catch(e){}
+}
+setInterval(chargerAgenda, 5*60000);
+function quandLisible(iso){
+  const d = new Date(iso), auj = new Date(), dem = new Date(Date.now()+86400000);
+  const jour = d.toDateString()===auj.toDateString() ? "Aujourd'hui" : d.toDateString()===dem.toDateString() ? "Demain" : d.toLocaleDateString("fr-FR",{weekday:"short", day:"numeric", month:"short"});
+  return `${jour} · ${fmtH(d)}`;
+}
+function verifierRappels(){
+  const now = Date.now();
+  (agenda.rappels||[]).forEach(r=>{
+    if(rappelsSonnes.has(r.id) || new Date(r.quand).getTime() > now) return;
+    rappelsSonnes.add(r.id);
+    const enRetard = now - new Date(r.quand).getTime() > 5*60000;
+    const bip = ()=>{ ton(1046,1046,.16,"sine",.13); ton(1318,1318,.16,"sine",.13,.18); ton(1568,1568,.3,"sine",.13,.36); HUD.flash = .6; };
+    bip(); setTimeout(bip, 1600);
+    const txt = (enRetard ? "Rappel manqué : " : "Rappel : ") + r.texte;
+    if(etat!=="actif") sousTitre("", "🔔 " + txt, "");
+    annoncer(txt + ".", "surpris");          // dit tout de suite, ou dès qu'il a fini de parler / dès le déverrouillage
+    if(!horsLigne && !stockageLocal) requete("rappel_fait", {id:r.id}, 8000).then(x=>x.ok && x.json()).then(a=>{ if(a) agenda = a; }).catch(()=>{});
+    else { agenda.rappels = agenda.rappels.filter(x=>x.id!==r.id); sauverAgendaLocal(); }
+  });
+}
+function ouvrirAgenda(demo){
+  clearInterval(tableauTimer);
+  const sc = $("fScroll"); sc.textContent = ""; sc.scrollTop = 0; $("fProg").style.width = "0";
+  const head = el("div","tb-head");
+  const close = el("button","f-close","×"); close.type = "button"; close.style.position = "static"; close.style.alignSelf = "flex-end"; close.setAttribute("aria-label","Fermer"); close.onclick = fermerFiche;
+  const sub = el("div","f-sub","Ton agenda"); if(demo) sub.appendChild(el("span","f-tag","EXEMPLE"));
+  head.append(close, sub, el("h2","tb-route","Rappels et choses à faire"));
+  const corps = el("div","ag-body");
+  corps.appendChild(el("div","r-lab","Rappels"));
+  const rl = agenda.rappels||[];
+  if(!rl.length) corps.appendChild(el("p","ag-vide","Aucun rappel. Dis « rappelle-moi demain à 8 h de… »."));
+  rl.forEach(r=>{ const l = el("div","ag-rap"); l.append(el("span","ag-quand", quandLisible(r.quand)), el("span","ag-txt", r.texte)); corps.appendChild(l); });
+  corps.appendChild(el("div","r-lab","À faire"));
+  const tl = agenda.taches||[];
+  if(!tl.length) corps.appendChild(el("p","ag-vide","Liste vide. Dis « ajoute … à ma liste »."));
+  tl.forEach(t=>{
+    const b = el("button","ag-tache"); b.type = "button"; b.setAttribute("aria-label","Cocher : " + t.texte);
+    b.append(el("span","ag-case"), el("span","ag-txt", t.texte));
+    b.onclick = async ()=>{
+      b.classList.add("fait"); SFX.blip();
+      if(demo || horsLigne || stockageLocal){ agenda.taches = agenda.taches.filter(x=>x.id!==t.id); if(!demo) sauverAgendaLocal(); return; }
+      try{ const r = await requete("tache_faite", {id:t.id}, 8000); if(r.ok) agenda = await r.json(); }catch(e){ b.classList.remove("fait"); }
+    };
+    corps.appendChild(b);
+  });
+  $("fiche").classList.add("compact");
+  sc.append(head, corps);
+  $("fiche").classList.add("open"); $("fiche").setAttribute("aria-hidden","false");
+  document.body.classList.add("fiche-on"); ficheOn = 1; ficheTitre = "Agenda"; SFX.fiche();
+}
+
+/* ---------------- MINUTEURS ---------------- */
+let minuteurs = [], sonnerie = null;
+try{ minuteurs = JSON.parse(localStorage.getItem("nexxus_minuteurs")||"[]").filter(m=>m.fin > Date.now()); }catch(e){}
+function sauverMinuteurs(){ try{ localStorage.setItem("nexxus_minuteurs", JSON.stringify(minuteurs)); }catch(e){} }
+function executerAction(a){
+  if(a.type==="minuteur" && a.secondes>0){ minuteurs.push({id:Date.now()+Math.random(), fin:Date.now()+a.secondes*1000, nom:a.nom||"Minuteur"}); sauverMinuteurs(); afficherMinuteurs(); }
+  if(a.type==="annuler_minuteurs") annulerMinuteurs();
+  if(a.type==="musique") jouerMusique(a.url, a.nom);
+  if(a.type==="stop_musique") stopMusique();
+}
+function annulerMinuteurs(){ minuteurs = []; sauverMinuteurs(); afficherMinuteurs(); arreterSonnerie(); }
+function fmtDuree(ms){ const s = Math.ceil(ms/1000), h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return (h ? h+":"+String(m).padStart(2,"0") : m) + ":" + String(x).padStart(2,"0"); }
+function afficherMinuteurs(){
+  const box = $("timers"); box.textContent = "";
+  if(REG.devoirs){ const d = el("button","timer"); d.type = "button"; d.title = "Quitter le mode devoirs";
+    d.append(el("span","t-val","✎"), el("span","t-nom","Mode devoirs"), el("span","t-nom","✕"));
+    d.onclick = e=>{ e.stopPropagation(); basculerDevoirs(false); }; box.appendChild(d); }
+  if(musiqueNom){ const m = el("button","timer"); m.type = "button"; m.title = "Couper la musique";
+    m.append(el("span","t-val","♪"), el("span","t-nom", musiqueNom.slice(0,24)), el("span","t-nom","✕"));
+    m.onclick = e=>{ e.stopPropagation(); stopMusique(); }; box.appendChild(m); }
+  minuteurs.forEach(m=>{
+    const c = el("button","timer"); c.type = "button"; c.title = "Annuler";
+    c.append(el("span","t-nom", m.nom), el("span","t-val", fmtDuree(m.fin-Date.now())));
+    c.onclick = e=>{ e.stopPropagation(); minuteurs = minuteurs.filter(x=>x.id!==m.id); sauverMinuteurs(); afficherMinuteurs(); };
+    box.appendChild(c);
+  });
+}
+function sonner(m){
+  arreterSonnerie();
+  const bip = ()=>{ ton(880,880,.18,"square",.12); ton(1175,1175,.18,"square",.12,.22); ton(880,880,.18,"square",.12,.44); HUD.flash = .7; };
+  bip(); sonnerie = setInterval(bip, 1400);
+  setTimeout(arreterSonnerie, 60000);
+  annoncer(`${m.nom} terminé !`, "surpris", "content");
+  sousTitre("", `⏰ ${m.nom} terminé. Touche l'écran pour arrêter.`, "");
+}
+function arreterSonnerie(){ if(sonnerie){ clearInterval(sonnerie); sonnerie = null; } }
+setInterval(()=>{
+  verifierRappels();
+  if(!minuteurs.length) return;
+  const fini = minuteurs.filter(m=>m.fin<=Date.now());
+  if(fini.length){ minuteurs = minuteurs.filter(m=>m.fin>Date.now()); sauverMinuteurs(); fini.forEach(sonner); }
+  afficherMinuteurs();
+}, 500);
+afficherMinuteurs();
+
+const AIE = ["Aïe, mon œil !", "Hé, ça chatouille !", "Tu fais quoi, là ?", "Doucement, c'est fragile, ces trucs.", "Bip boup. Je suis réveillé, promis."];
+let appuiT = null, caresseFaite = false;
+$("stage").addEventListener("pointerdown", ()=>{ caresseFaite = false; clearTimeout(appuiT); appuiT = setTimeout(()=>{ caresseFaite = true; initAudio(); caresse(); }, 650); });
+["pointerup","pointerleave","pointercancel"].forEach(t=> $("stage").addEventListener(t, ()=> clearTimeout(appuiT)));
+$("stage").onclick = e=>{
+  if(caresseFaite){ caresseFaite = false; return; }
+  if(etat==="actif" && !occupe && F.mood!=="parle" && !sonnerie && $("reglages").hidden){
+    const touche = F.yeux.some(o=> e.clientX>=o.x-12 && e.clientX<=o.x+o.w+12 && e.clientY>=o.y-12 && e.clientY<=o.y+o.h+12);
+    if(touche){ initAudio(); derniereActivite = Date.now(); F.blink = 1; HUD.shake = .25;
+      ton(900, 1500, .12, "sine", .08); return annoncer(AIE[Math.floor(Math.random()*AIE.length)], "surpris", "content"); }
+  }
+  toucher();
+};
+$("stage").addEventListener("pointermove", e=>{
+  if(e.pointerType!=="mouse" || etat!=="actif" || ["pense","cherche"].includes(F.mood)) return;
+  F.tx = Math.max(-1, Math.min(1, (e.clientX - F.cx)/(innerWidth/2)));
+  F.ty = Math.max(-1, Math.min(1, (e.clientY - F.cy)/(innerHeight/2)));
+  F.lookT = 2.5;
+});
+$("stage").onkeydown = e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toucher(); } };
+$("lockBtn").onclick = e=>{ e.stopPropagation(); initAudio(); verrouiller(); };
+
+// tiroir de boutons : s'ouvre avec « … », se referme tout seul
+let tiroirT = null;
+function tiroir(ouvrir){
+  $("tools").classList.toggle("ouvert", ouvrir); $("plusBtn").setAttribute("aria-expanded", ouvrir ? "true" : "false");
+  clearTimeout(tiroirT); if(ouvrir) tiroirT = setTimeout(()=>tiroir(false), 7000);
+}
+$("plusBtn").onclick = e=>{ e.stopPropagation(); initAudio(); tiroir(!$("tools").classList.contains("ouvert")); };
+document.querySelectorAll("#tiroir .tbtn").forEach(b=> b.addEventListener("click", ()=> setTimeout(()=>tiroir(false), 300)));
+// l'interface s'efface quand on ne touche à rien
+let calmeT = null;
+function reveil(){ document.body.classList.remove("calme"); clearTimeout(calmeT); calmeT = setTimeout(()=>{ if($("kbd").hidden && $("reglages").hidden) document.body.classList.add("calme"); }, 9000); }
+["pointermove","pointerdown","keydown"].forEach(t=> addEventListener(t, reveil, {passive:true}));
+reveil();
+function ouvrirClavier(ph){ $("kbd").hidden = false; $("hint").hidden = true; if(ph) $("ask").placeholder = ph; $("ask").focus(); }
+$("kbdBtn").onclick = e=>{ e.stopPropagation(); initAudio(); if($("kbd").hidden) ouvrirClavier(etat==="actif" ? "Ex : cherche les infos sur la mission Artemis" : "Phrase secrète"); else $("kbd").hidden = true; };
+// envoi du texte : touche Entrée, bouton flèche ou validation du formulaire (certains écrans bloquent l'un ou l'autre)
+let dernierEnvoi = 0;
+function envoyerTexte(){
+  if(Date.now() - dernierEnvoi < 300) return; dernierEnvoi = Date.now();
+  initAudio();
+  const v = $("ask").value.trim(); if(!v) return;
+  $("ask").value = "";
+  if(etat==="verrou") identifier(v);
+  else if(etat==="auth") phraseEnAttente = v;                       // on la vérifie dès que l'animation est finie
+  else if(etat==="actif"){ $("ask").placeholder = "Écris ici…"; poser(v); }
+  else if(etat==="ouverture") attente = v;                           // posée juste après le salut
+  $("ask").focus();
+}
+$("kbd").addEventListener("submit", e=>{ e.preventDefault(); envoyerTexte(); });
+$("ask").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.isComposing && e.keyCode!==229){ e.preventDefault(); envoyerTexte(); } });
+$("envoi").addEventListener("click", e=>{ e.preventDefault(); e.stopPropagation(); envoyerTexte(); });
+let phraseEnAttente = null;
+majOreille();
+
+/* ---------------- RÉGLAGES ---------------- */
+function construireReglages(){
+  const sw = $("rCouleurs"); sw.textContent = "";
+  Object.entries(COULEURS).forEach(([k,[r,g,b]])=>{ const x = el("button","sw"); x.type = "button"; x.style.background = `rgb(${r},${g},${b})`; x.setAttribute("aria-label", "Couleur " + k); x.dataset.k = k;
+    x.onclick = ()=>{ REG.couleur = k; sauverReglages(); appliquerCouleur(); majReglages(); SFX.blip(); }; sw.appendChild(x); });
+  const st = $("rThemes"); st.textContent = "";
+  Object.entries(THEMES).forEach(([k,lab])=>{ const x = el("button","",lab); x.type = "button"; x.dataset.k = k; x.onclick = ()=>{ choisirTheme(k); SFX.blip(); }; st.appendChild(x); });
+  const sg = $("rStyles"); sg.textContent = "";
+  Object.entries(STYLES).forEach(([k,lab])=>{ const x = el("button","",lab); x.type = "button"; x.dataset.k = k; x.onclick = ()=>{ choisirStyle(k); SFX.blip(); }; sg.appendChild(x); });
+}
+function majReglages(){
+  document.querySelectorAll("#rCouleurs .sw").forEach(x=>{ x.classList.toggle("on", x.dataset.k===REG.couleur); x.setAttribute("aria-pressed", x.dataset.k===REG.couleur); });
+  document.querySelectorAll("#rThemes button").forEach(x=>{ x.classList.toggle("on", x.dataset.k===REG.theme); x.setAttribute("aria-pressed", x.dataset.k===REG.theme); });
+  document.querySelectorAll("#rStyles button").forEach(x=>{ x.classList.toggle("on", x.dataset.k===REG.style); x.setAttribute("aria-pressed", x.dataset.k===REG.style); });
+  $("rVol").value = REG.volume; $("rVerrou").value = String(REG.verrou);
+}
+const VOIX_CLAUDE = {buttery:"Douce", airy:"Légère", glassy:"Claire", rounded:"Ronde"};
+const VOIX_AZURE = {"fr-FR-RemyMultilingualNeural":"Rémy", "fr-FR-VivienneMultilingualNeural":"Vivienne", "fr-FR-HenriNeural":"Henri", "fr-FR-DeniseNeural":"Denise"};
+function majVoix(){
+  const box = $("rVoix"); box.textContent = "";
+  const azure = !horsLigne, claudeV = horsLigne && CAP.tts && !ttsRefuse;
+  const liste = azure ? VOIX_AZURE : claudeV ? VOIX_CLAUDE : null, cle = azure ? "voixAzure" : "voixClaude";
+  $("rVoixNote").textContent = azure ? "Voix Microsoft, via ton serveur." : claudeV ? "Voix de Claude. Le français peut rendre deux voix proches." : "Voix du téléphone (les voix réalistes marchent dans Chrome, l'appli Claude ou sur ton serveur).";
+  if(!liste) return;
+  Object.entries(liste).forEach(([k,lab])=>{ const b = el("button", REG[cle]===k ? "on" : "", lab); b.type = "button"; b.setAttribute("aria-pressed", REG[cle]===k);
+    b.onclick = ()=>{ REG[cle] = k; sauverReglages(); majVoix(); essaiVoix(); }; box.appendChild(b); });
+}
+function essaiVoix(){
+  interrompre(); interrompu = false;
+  if(etat==="actif" && !occupe) dire("Salut, c'est ma nouvelle voix. Elle te plaît ?", "content");
+}
+function fermerReglages(){ $("reglages").hidden = true; }
+construireReglages(); majReglages(); majDevoirs(); majBruit();
+$("gearBtn").onclick = e=>{ e.stopPropagation(); initAudio(); majVoix(); $("rDebit").value = REG.debit; $("reglages").hidden = !$("reglages").hidden; };
+$("rDebit").oninput = ()=>{ REG.debit = +$("rDebit").value; sauverReglages(); try{ const r = CAP.tts?.setRate?.(REG.debit); r?.catch?.(()=>{}); }catch(e){} };
+$("rDebit").onchange = ()=> essaiVoix();
+$("rClose").onclick = fermerReglages;
+$("reglages").onclick = e=> e.stopPropagation();
+$("rVol").oninput = ()=>{ REG.volume = +$("rVol").value; sauverReglages(); volumeMusique(); };
+$("rVol").onchange = ()=> SFX.blip();
+$("rVerrou").onchange = ()=>{ REG.verrou = +$("rVerrou").value; sauverReglages(); };
+$("rBrief").onclick = ()=>{ if(etat==="actif") lancerBriefing(); };
+$("rBruit").onclick = ()=>{ REG.bruit = !REG.bruit; sauverReglages(); majBruit(); SFX.blip(); REG.bruit ? demarrerBruit() : arreterBruit(); };
+$("rDevoirs").onclick = ()=>{ basculerDevoirs(!REG.devoirs); SFX.blip(); };
+$("rOubli").onclick = ()=>{ fermerReglages(); historique = []; sauverHisto(); fermerFiche(); jeuSecret = ""; pfc.actif = false; if(etat==="actif") dire("C'est noté, on repart de zéro.", "content"); };
+$("rDiag").onclick = async ()=>{
+  const box = $("rDiagRes"); box.hidden = false; box.textContent = "";
+  box.appendChild(el("span","r-lab","Test en cours…"));
+  if(horsLigne || etat!=="actif"){ box.textContent = ""; box.appendChild(el("small","", "Le test se lance une fois le compagnon installé sur ton site et déverrouillé.")); return; }
+  try{
+    const r = await requete("diag", undefined, 60000);
+    if(r.status===401){ box.textContent = "Session expirée : déverrouille-le à nouveau."; return; }
+    const j = await r.json(); box.textContent = "";
+    const ok = j.tests.filter(t=>t.ok).length;
+    box.appendChild(el("span","r-lab", `${ok} / ${j.tests.length} vérifications réussies`));
+    const g = el("div","diag");
+    j.tests.forEach(t=>{
+      const info = el("div"); info.append(el("b","", t.nom), el("small","", t.detail));
+      if(t.aide) info.appendChild(el("small","aide", "→ " + t.aide));
+      g.append(el("span", "ic " + (t.ok ? "ok" : "ko"), t.ok ? "✓" : "✗"), info);
+    });
+    box.appendChild(g);
+  }catch(e){ box.textContent = "Le relais ne répond pas : vérifie que relay.php est bien dans le même dossier."; }
+};
+document.addEventListener("keydown", e=>{ if(e.key!=="Escape") return;
+  let ferme = false;
+  if(!$("reglages").hidden){ fermerReglages(); ferme = true; }
+  else if(!$("cam").hidden){ fermerCamera(); ferme = true; }
+  else if(ficheOn){ fermerFiche(); ferme = true; }
+  if(ferme) e.preventDefault(); });
+
+/* ---------------- VEILLE, NUIT, MÉTÉO LOCALE ---------------- */
+let meteoLocale = null;
+const CIEL = c => c<=1?"ciel dégagé":c<=3?"nuageux":c<=48?"brouillard":c<=67?"pluie":c<=77?"neige":c<=82?"averses":"orage";
+function chargerMeteo(){
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}&current=temperature_2m,weather_code&timezone=Europe%2FParis`)
+    .then(r=>r.json()).then(j=>{ meteoLocale = {t:Math.round(j.current.temperature_2m), ciel:CIEL(j.current.weather_code)}; }).catch(()=>{});
+}
+chargerMeteo(); setInterval(chargerMeteo, 30*60000);
+setInterval(()=>{
+  const d = new Date(), veille = etat==="actif" && F.mood==="dort" && !ficheOn;
+  $("veille").classList.toggle("on", veille);
+  if(veille){
+    $("vTime").textContent = d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+    const infos = [d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})];
+    if(meteoLocale) infos.push(`${meteoLocale.t}° · ${meteoLocale.ciel}`);
+    const pr = (agenda.rappels||[])[0]; if(pr) infos.push(`🔔 ${quandLisible(pr.quand)} — ${pr.texte}`);
+    if(musiqueNom) infos.push(`♪ ${musiqueNom}`);
+    $("vInfo").textContent = infos.join("  ·  ");
+  }
+  $("dim").classList.toggle("on", nuit() && (etat==="verrou" || (etat==="actif" && F.mood==="dort")));
+}, 1000);
+
+demarrage();
+</script>
+
+</body>
+</html>
