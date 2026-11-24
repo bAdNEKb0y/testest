@@ -124,6 +124,45 @@ static void tachePhotos(void *) {
   }
 }
 
+// ------------------------------------------------------------------ rappels de l'agenda (« rappelle-moi demain à 8 h… »)
+struct Rappel { String id, texte; time_t quand; };
+static std::vector<Rappel> rappels;
+static SemaphoreHandle_t verrouRappels;
+static QueueHandle_t fileRappelsFaits;
+static time_t lireDate(const char *s) {  // AAAA-MM-JJTHH:MM:SS, heure de Paris
+  struct tm tm = {};
+  if (!s || sscanf(s, "%d-%d-%dT%d:%d", &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min) != 5) return 0;
+  tm.tm_year -= 1900; tm.tm_mon -= 1; tm.tm_isdst = -1;
+  return mktime(&tm);
+}
+static void tacheRappels(void *) {
+  uint32_t dernier = 0;
+  while (true) {
+    String *fait;
+    if (xQueueReceive(fileRappelsFaits, &fait, pdMS_TO_TICKS(1000)) == pdTRUE) {
+      String corps = "{\"id\":\"" + *fait + "\"}";
+      Tampon t;
+      relais("rappel_fait", "POST", "application/json", (const uint8_t *)corps.c_str(), corps.length(), t, 15000);
+      delete fait;
+      dernier = 0;
+    }
+    if (reseau::connecte() && R.serveur.length() && R.code.length() && (!dernier || millis() - dernier > 60000)) {
+      dernier = millis();
+      Tampon t;
+      if (relais("agenda", "GET", nullptr, nullptr, 0, t, 15000) == 200) {
+        JsonDocument d;
+        if (!deserializeJson(d, t.d, t.n)) {
+          std::vector<Rappel> l;
+          for (JsonObject r : d["rappels"].as<JsonArray>()) l.push_back({r["id"] | "", r["texte"] | "Rappel", lireDate(r["quand"] | "")});
+          xSemaphoreTake(verrouRappels, portMAX_DELAY);
+          rappels = l;
+          xSemaphoreGive(verrouRappels);
+        }
+      }
+    }
+  }
+}
+
 // ------------------------------------------------------------------ météo de l'écran de veille (Open-Meteo, sans clé, sans serveur)
 static String encoderURL(const String &s) {
   String o;
@@ -410,6 +449,9 @@ void setup() {
   ble::demarrer(R.nom);
   xTaskCreatePinnedToCore(tacheSonnerie, "sonnerie", 4096, nullptr, 1, nullptr, 0);
   xTaskCreatePinnedToCore(tacheMeteo, "meteo", 8192, nullptr, 1, nullptr, 0);
+  verrouRappels = xSemaphoreCreateMutex();
+  fileRappelsFaits = xQueueCreate(4, sizeof(String *));
+  xTaskCreatePinnedToCore(tacheRappels, "rappels", 8192, nullptr, 1, nullptr, 0);
   filePhotos = xQueueCreate(2, sizeof(DemandePhoto *));
   xTaskCreatePinnedToCore(tachePhotos, "photos", 8192, nullptr, 2, nullptr, 0);
 
@@ -537,6 +579,35 @@ void loop() {
       ui::humeur(H_SURPRIS, 5000);
       sonnerie = true;
       sonnerieDebut = m;
+    }
+  }
+
+  // --- rappels arrivés à l'heure
+  static uint32_t derniereVerifRappels = 0;
+  if (m - derniereVerifRappels > 1000) {
+    derniereVerifRappels = m;
+    time_t maintenant = time(nullptr);
+    String texte, id;
+    xSemaphoreTake(verrouRappels, portMAX_DELAY);
+    for (size_t i = 0; i < rappels.size(); i++)
+      if (rappels[i].quand > 0 && rappels[i].quand <= maintenant && maintenant > 1700000000) {
+        texte = rappels[i].texte; id = rappels[i].id;
+        rappels.erase(rappels.begin() + i);
+        break;
+      }
+    xSemaphoreGive(verrouRappels);
+    if (id.length()) {
+      allumerEcran();
+      Carte *c = new Carte();
+      c->type = "minuteur"; c->locale = true;
+      c->pages.push_back({bloc(B_SOUS, "Rappel"), bloc(B_TITRE, texte), bloc(B_PETIT, "Touche l'écran pour arrêter")});
+      ui::montrerCarte(c);
+      ui::humeur(H_SURPRIS, 5000);
+      sonnerie = true;
+      sonnerieDebut = m;
+      cerveau::dire("Rappel : " + texte);
+      String *f = new String(id);
+      if (xQueueSend(fileRappelsFaits, &f, 0) != pdTRUE) delete f;
     }
   }
 
