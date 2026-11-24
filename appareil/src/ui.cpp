@@ -246,6 +246,9 @@ static uint32_t photoAttenteDepuis = 0, photoDepuis = 0;
 static bool photoPlan = false, photoEpingle = false;
 static int photoY0 = 0;
 static int nbPlans = 0;
+static bool musiqueOn = false, aubeOn = false;
+static uint32_t aubeDebut = 0;
+static float barres[48];
 
 static void icone(int code, int cx, int cy, int t);
 
@@ -459,6 +462,8 @@ void ui::attacherImage(uint32_t id, const String &imgId, uint16_t *px, int w, in
   free(px);
 }
 
+void ui::musique(bool on) { musiqueOn = on; }
+void ui::aube(bool on) { VERROU; if (on && !aubeOn) aubeDebut = millis(); aubeOn = on; }
 void ui::attenteImage() { VERROU; photoAttenteDepuis = millis(); }
 void ui::photo(uint16_t *px, const String &legende, bool plan, bool epingle) {
   VERROU;
@@ -965,11 +970,20 @@ void ui::dessiner(uint32_t m) {
   }
   veilleAlpha = approche(veilleAlpha, veille && !carteVisible ? 1 : 0, 5, dt);
   if (veilleAlpha > 0.97f) { dessinerVeille(m, 1); bougeEncore = true; return; }
+  // réveil : lever de soleil derrière le visage
+  if (aubeOn) {
+    float pa = clampf((m - aubeDebut) / 45000.f, 0.15f, 1);
+    for (int i = 0; i < 7; i++) {
+      float f = i / 6.f;
+      uint16_t c = melange(0x2000, i < 4 ? 0xFB40 : 0xFE60, f);
+      g->fillCircle(CENTRE, CENTRE + 60, (R + 40) * (1 - f * 0.8f) * (0.7f + 0.3f * pa), attenue(c, pa * (0.35f + 0.65f * f)));
+    }
+  }
   float p = clampf((ECRAN - carteY) / (float)(ECRAN - HAUT_CARTE), 0, 1.2f);
   float pp = clampf(p, 0, 1);
   bool st = sousTitreTxt.length() && (int32_t)(sousTitreFin - m) > 0 && pp < 0.05f;
   sousTitreAlpha = approche(sousTitreAlpha, st ? 1 : 0, 8, dt);
-  float respire = sinf(m * 0.0016f) * 3;
+  float respire = musiqueOn ? fabsf(sinf(m * 0.0068f)) * -9 : sinf(m * 0.0016f) * 3;
   float s = 1 - 0.66f * pp;
   float cy = CENTRE - 42 * sousTitreAlpha + respire * (1 - pp);
   cy = cy + (62 - cy) * pp;
@@ -1059,6 +1073,16 @@ void ui::dessiner(uint32_t m) {
     float a = clampf((astuceRouvrirFin - m) / 1000.f, 0, 1);
     g->fillTriangle(CENTRE - 10, 412, CENTRE + 10, 412, CENTRE, 402, attenue(GRIS, a));
     texteCentre(F_PETIT, "glisse vers le haut pour revoir", CENTRE, 432, attenue(GRIS, a));
+  }
+
+  // radio : petites barres qui dansent tout autour
+  if (musiqueOn && act != A_ECOUTE && act != A_REFLECHIT) {
+    for (int i = 0; i < 48; i++) {
+      float cible = 0.25f + 0.75f * fabsf(sinf(m * 0.004f + i * 0.7f) * sinf(m * 0.0023f + i * 1.9f));
+      barres[i] = barres[i] * 0.7f + cible * 0.3f;
+      float a = i * 7.5f;
+      g->fillArc(CENTRE, CENTRE, R - 2, R - 2 - (int)(3 + 14 * barres[i]), a, a + 4.5f, attenue(accent, 0.35f + 0.6f * barres[i]));
+    }
   }
 
   // anneau d'activité autour de l'écran

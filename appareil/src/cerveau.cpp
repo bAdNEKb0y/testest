@@ -1,5 +1,5 @@
 #include "cerveau.h"
-#include "audio.h"
+#include "son.h"
 #include "http.h"
 #include "reglages.h"
 #include "ui.h"
@@ -13,6 +13,9 @@ void (*surMinuteur)(uint32_t, const String &) = nullptr;
 void (*surAnnulerMinuteurs)() = nullptr;
 void (*surCarteLocale)(const String &) = nullptr;
 void (*surPlan)(const String &, const String &, bool, int) = nullptr;
+void (*surRadio)(const String &, const String &) = nullptr;
+void (*surStopRadio)() = nullptr;
+void (*surAlarmesChangees)() = nullptr;
 }
 
 enum TypeDemande : uint8_t { D_ECOUTER, D_QUESTION, D_DIRE };
@@ -245,11 +248,15 @@ static void reflechir(const String &texte, uint32_t gen) {
 
   Humeur h = humeurDe(r["humeur"] | "neutre");
   ui::humeur(h, h == H_NEUTRE ? 0 : 6000 + reponse.length() * 55);
+  String radioApres, radioNom;
   for (JsonObject a : r["actions"].as<JsonArray>()) {
     String type = a["type"] | "";
     if (type == "minuteur" && cerveau::surMinuteur) cerveau::surMinuteur(a["secondes"] | 60, a["nom"] | "Minuteur");
     else if (type == "annuler_minuteurs" && cerveau::surAnnulerMinuteurs) cerveau::surAnnulerMinuteurs();
     else if (type == "carte" && cerveau::surCarteLocale) cerveau::surCarteLocale(a["quoi"] | "appareil");
+    else if (type == "musique" && cerveau::surRadio) radioApres = a["url"] | "", radioNom = a["nom"] | "Radio";
+    else if (type == "stop_musique" && cerveau::surStopRadio) cerveau::surStopRadio();
+    else if (type == "alarmes" && cerveau::surAlarmesChangees) cerveau::surAlarmesChangees();
     else if (type == "plan" && cerveau::surPlan) cerveau::surPlan(a["id"] | "", a["titre"] | "", a["centre"] | false, a["zoom"] | 15);
   }
   std::vector<String> images;
@@ -263,6 +270,12 @@ static void reflechir(const String &texte, uint32_t gen) {
   r.clear();
   t.liberer();
   parlerTexte(reponse, gen, [&]() { for (auto &id : images) if (gen == generation) chargerImage(carteId, id); });
+  if (radioApres.length() && gen == generation) {
+    // la radio démarre une fois l'annonce finie
+    uint32_t t0 = millis();
+    while ((sonsEnAttente > 0 || production) && gen == generation && millis() - t0 < 30000) vTaskDelay(pdMS_TO_TICKS(50));
+    if (gen == generation) cerveau::surRadio(radioApres, radioNom);
+  }
 }
 
 static void ecouterPuisReflechir(uint32_t gen) {

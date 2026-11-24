@@ -1,10 +1,11 @@
-#include "audio.h"
+#include "son.h"
 #include "config.h"
 #include "ui.h"
 #include <Wire.h>
 #include <ESP_I2S.h>
 #include <es8311.h>
 #include <math.h>
+#include <Audio.h>   // bibliothèque ESP32-audioI2S (radio)
 
 static I2SClass i2s;
 static es8311_handle_t es8311 = nullptr;
@@ -87,12 +88,56 @@ static bool init7210() {
 }
 
 // ------------------------------------------------------------------ démarrage
+static bool demarrerI2S() {
+  i2s.setPins(I2S_BCLK, I2S_WS, I2S_DOUT, I2S_DIN, I2S_MCLK);
+  return i2s.begin(I2S_MODE_STD, TAUX, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH);
+}
+
+// ------------------------------------------------------------------ radio : le lecteur prend les broches I2S le temps de la musique
+static Audio *lecteur = nullptr;
+static volatile bool radioOn = false;
+static void tacheRadio(void *) {
+  while (true) {
+    if (radioOn && lecteur) { lecteur->loop(); vTaskDelay(1); }
+    else vTaskDelay(pdMS_TO_TICKS(50));
+  }
+}
+bool audio::radio(const String &url) {
+  if (!url.startsWith("http")) return false;
+  xSemaphoreTakeRecursive(verrouI2S, portMAX_DELAY);
+  if (!lecteur) {
+    lecteur = new Audio(I2S_NUM_1);
+    xTaskCreatePinnedToCore(tacheRadio, "radio", 8192, nullptr, 4, nullptr, 0);
+  }
+  if (radioOn) lecteur->stopSong();
+  i2s.end();
+  lecteur->setPinout(I2S_BCLK, I2S_WS, I2S_DOUT, I2S_MCLK);
+  lecteur->setVolume(21);
+  digitalWrite(PIN_AMPLI, HIGH);
+  bool ok = lecteur->connecttohost(url.c_str());
+  radioOn = ok;
+  if (!ok) { digitalWrite(PIN_AMPLI, LOW); demarrerI2S(); }
+  xSemaphoreGiveRecursive(verrouI2S);
+  return ok;
+}
+void audio::radioStop() {
+  if (!radioOn) return;
+  xSemaphoreTakeRecursive(verrouI2S, portMAX_DELAY);
+  radioOn = false;
+  vTaskDelay(pdMS_TO_TICKS(20));
+  lecteur->stopSong();
+  digitalWrite(PIN_AMPLI, LOW);
+  demarrerI2S();  // nos micros et notre voix reprennent les broches
+  xSemaphoreGiveRecursive(verrouI2S);
+}
+bool audio::radioActive() { return radioOn; }
+float audio::niveauRadio() { return radioOn && lecteur && lecteur->isRunning() ? 1.f : 0.f; }
+
 bool audio::demarrer() {
   verrouI2S = xSemaphoreCreateRecursiveMutex();
   pinMode(PIN_AMPLI, OUTPUT);
   digitalWrite(PIN_AMPLI, LOW);
-  i2s.setPins(I2S_BCLK, I2S_WS, I2S_DOUT, I2S_DIN, I2S_MCLK);
-  if (!i2s.begin(I2S_MODE_STD, TAUX, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH)) {
+  if (!demarrerI2S()) {
     Serial.println("[son] I2S : échec");
     return false;
   }
@@ -133,6 +178,7 @@ static void ampli(bool on) {
 
 void audio::jouer(const int16_t *pcm, size_t n, volatile bool *stop) {
   if (!pcm || !n) return;
+  radioStop();
   xSemaphoreTakeRecursive(verrouI2S, portMAX_DELAY);
   ampli(true);
   static int16_t st[512];
@@ -183,6 +229,7 @@ uint8_t *audio::ecouter(size_t &taille, volatile bool *stop, uint32_t maxMs) {
   uint8_t *wav = (uint8_t *)ps_malloc(44 + maxEch * 2);
   if (!wav) return nullptr;
   int16_t *ech = (int16_t *)(wav + 44);
+  radioStop();
   xSemaphoreTakeRecursive(verrouI2S, portMAX_DELAY);
   ampli(false);
   static int16_t brut[320 * 2];

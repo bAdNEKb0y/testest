@@ -12,4 +12,9 @@ namespace audio {
   void melodie(const int *notes, int n, int ms);
   // Enregistre jusqu'au silence. Renvoie un WAV complet (en-tête compris) alloué en PSRAM, à libérer avec free().
   uint8_t *ecouter(size_t &taille, volatile bool *stop, uint32_t maxMs = 12000);
+  // Radio en ligne (MP3/AAC, http ou https). S'arrête toute seule dès qu'on parle ou qu'on écoute.
+  bool radio(const String &url);
+  void radioStop();
+  bool radioActive();
+  float niveauRadio();
 }

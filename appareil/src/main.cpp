@@ -15,12 +15,13 @@
 #include "config.h"
 #include "reglages.h"
 #include "ui.h"
-#include "audio.h"
+#include "son.h"
 #include "cerveau.h"
 #include "reseau.h"
 #include "ble.h"
 #include "http.h"
 #include <JPEGDEC.h>
+#include <Preferences.h>
 
 static Arduino_ESP32QSPI *bus = new Arduino_ESP32QSPI(LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
 static Arduino_CO5300 *ecran = new Arduino_CO5300(bus, LCD_RESET, 0, ECRAN, ECRAN, 6, 0, 0, 0);
@@ -70,6 +71,8 @@ struct Minuteur { uint32_t fin, total; String nom; };
 static std::vector<Minuteur> minuteurs;
 static SemaphoreHandle_t verrouMin;
 static volatile bool sonnerie = false;
+static volatile bool reveilActif = false;
+static void allumerEcran();
 static uint32_t sonnerieDebut = 0;
 
 static void ajouterMinuteur(uint32_t s, const String &nom) {
@@ -87,6 +90,13 @@ static void tacheSonnerie(void *) {
   static const int notes[] = {1319, 0, 1319, 0, 1568, 0, 0, 0};
   while (true) {
     if (sonnerie && !cerveau::occupe()) {
+      if (reveilActif) {  // réveil en douceur : de plus en plus fort
+        static const int doux[] = {784, 988, 1175, 1568, 0, 0};
+        float f = std::min(0.3f, 0.04f + (millis() - sonnerieDebut) / 90000.f * 0.26f);
+        for (int i = 0; i < 6 && sonnerie; i++) { if (doux[i]) audio::bip(doux[i], 160, f); else delay(160); }
+        if (millis() - sonnerieDebut > 10 * 60000) sonnerie = false;
+        continue;
+      }
       audio::melodie(notes, 8, 110);
       if (millis() - sonnerieDebut > 60000) sonnerie = false;
     } else vTaskDelay(pdMS_TO_TICKS(100));
@@ -130,6 +140,22 @@ static void tachePhotos(void *) {
 
 // ------------------------------------------------------------------ rappels de l'agenda (« rappelle-moi demain à 8 h… »)
 struct Rappel { String id, texte; time_t quand; };
+struct Alarme { String id, nom; int h, m; uint8_t jours; };   // jours : bit 0 = dimanche … bit 6 = samedi ; 0 = une seule fois
+static std::vector<Alarme> alarmes;
+static volatile bool rafraichirAgenda = false;
+static void chargerAlarmes(const String &json) {
+  JsonDocument d;
+  if (deserializeJson(d, json)) return;
+  std::vector<Alarme> l;
+  for (JsonObject a : d.as<JsonArray>()) {
+    String hm = a["heure"] | "";
+    if (hm.length() < 4) continue;
+    uint8_t j = 0;
+    for (JsonVariant v : a["jours"].as<JsonArray>()) j |= 1 << (v.as<int>() % 7);
+    l.push_back({a["id"] | "", a["nom"] | "Réveil", hm.substring(0, 2).toInt(), hm.substring(3, 5).toInt(), j});
+  }
+  alarmes = l;
+}
 static std::vector<Rappel> rappels;
 static SemaphoreHandle_t verrouRappels;
 static QueueHandle_t fileRappelsFaits;
@@ -144,12 +170,14 @@ static void tacheRappels(void *) {
   while (true) {
     String *fait;
     if (xQueueReceive(fileRappelsFaits, &fait, pdMS_TO_TICKS(1000)) == pdTRUE) {
-      String corps = "{\"id\":\"" + *fait + "\"}";
+      bool alarme = fait->startsWith("A:");
+      String corps = "{\"id\":\"" + (alarme ? fait->substring(2) : *fait) + "\"}";
       Tampon t;
-      relais("rappel_fait", "POST", "application/json", (const uint8_t *)corps.c_str(), corps.length(), t, 15000);
+      relais(alarme ? "alarme_faite" : "rappel_fait", "POST", "application/json", (const uint8_t *)corps.c_str(), corps.length(), t, 15000);
       delete fait;
       dernier = 0;
     }
+    if (rafraichirAgenda) { rafraichirAgenda = false; dernier = 0; }
     if (reseau::connecte() && R.serveur.length() && R.code.length() && (!dernier || millis() - dernier > 60000)) {
       dernier = millis();
       Tampon t;
@@ -158,9 +186,17 @@ static void tacheRappels(void *) {
         if (!deserializeJson(d, t.d, t.n)) {
           std::vector<Rappel> l;
           for (JsonObject r : d["rappels"].as<JsonArray>()) l.push_back({r["id"] | "", r["texte"] | "Rappel", lireDate(r["quand"] | "")});
+          String js;
+          serializeJson(d["alarmes"], js);
           xSemaphoreTake(verrouRappels, portMAX_DELAY);
           rappels = l;
+          chargerAlarmes(js);
           xSemaphoreGive(verrouRappels);
+          static String dernierJs;
+          if (js != dernierJs) {  // gardées en mémoire : les alarmes sonnent même sans Wi-Fi
+            dernierJs = js;
+            Preferences pr; pr.begin("alarmes", false); pr.putString("l", js); pr.end();
+          }
         }
       }
     }
@@ -280,6 +316,47 @@ static void carteMinuteurFini(const String &nom) {
   Carte *c = new Carte();
   c->type = "minuteur"; c->locale = true;
   c->pages.push_back({bloc(B_SOUS, "Minuteur"), bloc(B_TITRE, nom + " : c'est l'heure !"), bloc(B_PETIT, "Touche l'écran pour arrêter")});
+  ui::montrerCarte(c);
+}
+
+// ------------------------------------------------------------------ réveil
+static uint32_t repeterReveilA = 0;
+static String reveilNom;
+static void sonnerReveil(const String &nom) {
+  allumerEcran();
+  reveilActif = true;
+  reveilNom = nom;
+  audio::radioStop();
+  ui::aube(true);
+  ui::humeur(H_CONTENT, 0);
+  time_t t = time(nullptr); struct tm tm; localtime_r(&t, &tm);
+  char h[8]; snprintf(h, sizeof h, "%02d:%02d", tm.tm_hour, tm.tm_min);
+  Carte *c = new Carte();
+  c->type = "reveil"; c->locale = true;
+  Bloc stop = bloc(B_BOUTON, "Je suis réveillé !"); stop.id = "stop_reveil";
+  Bloc encore = bloc(B_BOUTON, "Encore 5 minutes"); encore.id = "encore_reveil";
+  c->pages.push_back({bloc(B_SOUS, nom), bloc(B_TITRE, h), stop, encore});
+  ui::montrerCarte(c);
+  sonnerie = true;
+  sonnerieDebut = millis();
+}
+static void finReveil(bool encore) {
+  sonnerie = false;
+  reveilActif = false;
+  ui::aube(false);
+  ui::fermerCarte();
+  if (encore) { repeterReveilA = millis() + 5 * 60000; ui::sousTitre("D'accord, encore 5 minutes...", 3000); ui::humeur(H_DORT, 0); return; }
+  repeterReveilA = 0;
+  ui::humeur(H_CONTENT, 5000);
+  if (R.serveur.length() && R.code.length()) cerveau::question("C'est l'heure du réveil, je viens de me lever. Fais-moi le briefing du matin.");
+  else ui::sousTitre("Bonjour ! Bonne journée !", 4000);
+}
+
+static void carteRadio(const String &nom) {
+  Carte *c = new Carte();
+  c->type = "radio"; c->locale = true;
+  Bloc stop = bloc(B_BOUTON, "Arrêter la radio"); stop.id = "stop_radio";
+  c->pages.push_back({bloc(B_SOUS, "Radio en direct"), bloc(B_TITRE, nom), bloc(B_PETIT, "Touche mon petit visage pour me parler"), stop});
   ui::montrerCarte(c);
 }
 
@@ -436,7 +513,18 @@ void setup() {
   // liaisons entre les modules
   ui::surParler = []() { allumerEcran(); sonnerie = false; cerveau::parler(); };
   ui::surChoix = [](const String &t) { cerveau::question(t); };
-  ui::surBouton = [](const String &id) { if (id == "stop_alarme") sonnerie = false; };
+  ui::surBouton = [](const String &id) {
+    if (id == "stop_alarme") sonnerie = false;
+    else if (id == "stop_reveil") finReveil(false);
+    else if (id == "encore_reveil") finReveil(true);
+    else if (id == "stop_radio") { audio::radioStop(); ui::fermerCarte(); }
+  };
+  cerveau::surRadio = [](const String &url, const String &nom) {
+    if (audio::radio(url)) { carteRadio(nom); ui::humeur(H_CONTENT, 4000); }
+    else ui::sousTitre("Cette radio ne veut pas démarrer, essaie une autre.", 4000);
+  };
+  cerveau::surStopRadio = []() { audio::radioStop(); };
+  cerveau::surAlarmesChangees = []() { rafraichirAgenda = true; };
   ui::surImage = [](const String &id, const String &legende) {
     if (id.startsWith("p:")) {  // aperçu d'un trajet : la carte en grand, qu'on peut zoomer
       planId = id.substring(2); planTitre = "Ton trajet"; planCentre = false; planZoom = 0;
@@ -473,6 +561,7 @@ void setup() {
   xTaskCreatePinnedToCore(tacheSonnerie, "sonnerie", 4096, nullptr, 1, nullptr, 0);
   xTaskCreatePinnedToCore(tacheMeteo, "meteo", 8192, nullptr, 1, nullptr, 0);
   verrouRappels = xSemaphoreCreateMutex();
+  { Preferences pr; pr.begin("alarmes", true); chargerAlarmes(pr.getString("l", "[]")); pr.end(); }
   fileRappelsFaits = xQueueCreate(4, sizeof(String *));
   xTaskCreatePinnedToCore(tacheRappels, "rappels", 8192, nullptr, 1, nullptr, 0);
   filePhotos = xQueueCreate(2, sizeof(DemandePhoto *));
@@ -532,7 +621,7 @@ void loop() {
     // le premier toucher sur un écran éteint ou endormi sert juste à le réveiller
     appuiAvaleEnCours = ecranEteint || ui::enVeille();
     allumerEcran();
-    if (sonnerie) { sonnerie = false; appuiAvaleEnCours = true; ui::fermerCarte(); }
+    if (sonnerie && !reveilActif) { sonnerie = false; appuiAvaleEnCours = true; ui::fermerCarte(); }
   }
   if (!presse && appuiEnCours) appuiEnCours = false;
   if (!appuiAvaleEnCours) ui::toucher(presse ? tx[0] : 0, presse ? ty[0] : 0, presse, m);
@@ -619,6 +708,27 @@ void loop() {
         break;
       }
     xSemaphoreGive(verrouRappels);
+    // alarmes : une fois par minute
+    static int derniereMinute = -1;
+    struct tm tmA; localtime_r(&maintenant, &tmA);
+    int cleMinute = tmA.tm_yday * 1440 + tmA.tm_hour * 60 + tmA.tm_min;
+    if (maintenant > 1700000000 && cleMinute != derniereMinute && !reveilActif) {
+      derniereMinute = cleMinute;
+      String nomA, idUnique;
+      xSemaphoreTake(verrouRappels, portMAX_DELAY);
+      for (auto &a : alarmes)
+        if (a.h == tmA.tm_hour && a.m == tmA.tm_min && (a.jours == 0 || (a.jours & (1 << tmA.tm_wday)))) {
+          nomA = a.nom;
+          if (a.jours == 0) idUnique = a.id;
+          break;
+        }
+      xSemaphoreGive(verrouRappels);
+      if (nomA.length()) {
+        sonnerReveil(nomA);
+        if (idUnique.length()) { String *f = new String("A:" + idUnique); if (xQueueSend(fileRappelsFaits, &f, 0) != pdTRUE) delete f; }
+      }
+    }
+    if (repeterReveilA && (int32_t)(millis() - repeterReveilA) > 0 && !reveilActif) { repeterReveilA = 0; sonnerReveil(reveilNom); }
     if (id.length()) {
       allumerEcran();
       Carte *c = new Carte();
@@ -663,6 +773,9 @@ void loop() {
     if (ch == '\n' || ch == '\r') { if (ligneSerie.length()) { Serial.println(executerCommande(ligneSerie)); ligneSerie = ""; } }
     else if (ligneSerie.length() < 300) ligneSerie += ch;
   }
+
+  ui::musique(audio::radioActive());
+  if (reveilActif) derniereActivite = m;
 
   // --- dessin
   if (!ecranEteint) {
