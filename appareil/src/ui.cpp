@@ -35,6 +35,7 @@ void (*surChoix)(const String &) = nullptr;
 void (*surBouton)(const String &) = nullptr;
 void (*surImage)(const String &, const String &) = nullptr;
 uint16_t *(*tampon)() = nullptr;
+void (*surZoom)(int) = nullptr;
 String (*infosAppareil)() = nullptr;
 bool batterieFaible = false;
 bool horsLigne = false;
@@ -242,6 +243,9 @@ static String choixFait;
 static uint16_t *photoPx = nullptr;
 static String photoTxt;
 static uint32_t photoAttenteDepuis = 0, photoDepuis = 0;
+static bool photoPlan = false, photoEpingle = false;
+static int photoY0 = 0;
+static int nbPlans = 0;
 
 static void icone(int code, int cx, int cy, int t);
 
@@ -455,10 +459,14 @@ void ui::attacherImage(uint32_t id, const String &imgId, uint16_t *px, int w, in
   free(px);
 }
 
-void ui::photo(uint16_t *px, const String &legende) {
+void ui::attenteImage() { VERROU; photoAttenteDepuis = millis(); }
+void ui::photo(uint16_t *px, const String &legende, bool plan, bool epingle) {
   VERROU;
   if (photoPx) free(photoPx);
+  else if (plan) nbPlans++;
   photoPx = px;
+  photoPlan = plan;
+  photoEpingle = epingle;
   photoTxt = nettoyer(legende);
   photoAttenteDepuis = 0;
   photoDepuis = millis();
@@ -511,9 +519,16 @@ static void tape(int x, int y) {
 
 void ui::toucher(int x, int y, bool presse, uint32_t t) {
   VERROU;
-  if (photoPx) {  // photo en grand : un toucher la referme
-    if (presse && !appui) appui = true;
-    if (!presse && appui) { appui = false; free(photoPx); photoPx = nullptr; derniereAction = millis(); }
+  if (photoPx) {  // photo ou carte en grand : un toucher la referme, glisser haut/bas zoome une carte
+    if (presse && !appui) { appui = true; photoY0 = y; yp = y; }
+    if (presse) yp = y;
+    if (!presse && appui) {
+      appui = false;
+      int dy = yp - photoY0;
+      derniereAction = millis();
+      if (photoPlan && abs(dy) > 50) { photoAttenteDepuis = millis(); if (ui::surZoom) ui::surZoom(dy < 0 ? 1 : -1); }
+      else { free(photoPx); photoPx = nullptr; }
+    }
     return;
   }
   if (presse && !appui) {
@@ -919,10 +934,31 @@ void ui::dessiner(uint32_t m) {
         y += 22;
       }
     }
-    if (millis() - photoDepuis < 3000) {
-      float a = clampf((3000 - (millis() - photoDepuis)) / 800.f, 0, 1);
-      g->fillRoundRect(CENTRE - 86, 36, 172, 26, 13, attenue(0x18E3, a));
-      texteCentre(F_PETIT, "touche pour revenir", CENTRE, 54, attenue(BLANC, a));
+    if (photoPlan) {
+      // contour lumineux et repère qui pulse au centre
+      g->fillArc(CENTRE, CENTRE, R - 1, R - 4, 0, 360, attenue(accent, 0.7f));
+      if (photoEpingle) {
+        float ph = fmodf(m / 1400.f, 1.f);
+        g->drawCircle(CENTRE, CENTRE, 10 + ph * 46, attenue(accent, 1 - ph));
+        g->drawCircle(CENTRE, CENTRE, 11 + ph * 46, attenue(accent, 1 - ph));
+        float ph2 = fmodf(ph + 0.5f, 1.f);
+        g->drawCircle(CENTRE, CENTRE, 10 + ph2 * 46, attenue(accent, (1 - ph2) * 0.6f));
+        g->fillCircle(CENTRE, CENTRE, 14, attenue(accent, 0.35f));
+        g->fillCircle(CENTRE, CENTRE, 9, BLANC);
+        g->fillCircle(CENTRE, CENTRE, 6, accent);
+      }
+    }
+    uint32_t vu = millis() - photoDepuis;
+    if (vu < 3500 && (!photoPlan || nbPlans <= 3)) {
+      float a = clampf((3500 - vu) / 800.f, 0, 1);
+      const char *txt = photoPlan ? "glisse haut/bas : zoom · touche : retour" : "touche pour revenir";
+      int w = largeur(F_PETIT, txt) + 24;
+      g->fillRoundRect(CENTRE - w / 2, 36, w, 26, 13, attenue(0x18E3, a));
+      texteCentre(F_PETIT, txt, CENTRE, 54, attenue(BLANC, a));
+    }
+    if (photoAttenteDepuis && m - photoAttenteDepuis < 12000) {
+      float a0 = fmodf((m - photoAttenteDepuis) * 0.4f, 360);
+      anneau(6, accent, a0, a0 + 80);
     }
     bougeEncore = true;
     return;

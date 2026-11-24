@@ -12,6 +12,7 @@ namespace cerveau {
 void (*surMinuteur)(uint32_t, const String &) = nullptr;
 void (*surAnnulerMinuteurs)() = nullptr;
 void (*surCarteLocale)(const String &) = nullptr;
+void (*surPlan)(const String &, const String &, bool, int) = nullptr;
 }
 
 enum TypeDemande : uint8_t { D_ECOUTER, D_QUESTION, D_DIRE };
@@ -248,6 +249,7 @@ static void reflechir(const String &texte, uint32_t gen) {
     if (type == "minuteur" && cerveau::surMinuteur) cerveau::surMinuteur(a["secondes"] | 60, a["nom"] | "Minuteur");
     else if (type == "annuler_minuteurs" && cerveau::surAnnulerMinuteurs) cerveau::surAnnulerMinuteurs();
     else if (type == "carte" && cerveau::surCarteLocale) cerveau::surCarteLocale(a["quoi"] | "appareil");
+    else if (type == "plan" && cerveau::surPlan) cerveau::surPlan(a["id"] | "", a["titre"] | "", a["centre"] | false, a["zoom"] | 15);
   }
   std::vector<String> images;
   uint32_t carteId = 0;

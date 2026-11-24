@@ -57,7 +57,9 @@ namespace ui {
   extern void (*surChoix)(const String &texte); // toucher une réponse de quiz
   extern void (*surBouton)(const String &id);   // bouton d'une carte locale
   extern void (*surImage)(const String &id, const String &legende);  // toucher une photo : la voir en grand
-  void photo(uint16_t *px466, const String &legende);  // photo plein écran (466 x 466, prend possession)
+  void photo(uint16_t *px466, const String &legende, bool plan = false, bool epingle = false);  // plein écran (466 x 466, prend possession)
+  extern void (*surZoom)(int sens);             // carte : glisser vers le haut = zoomer, vers le bas = dézoomer
+  void attenteImage();                          // petit anneau qui tourne pendant un chargement
   extern uint16_t *(*tampon)();                 // image en cours de dessin (pour l'effacer plus vite)
 
   // écran de veille (heure, météo, petits yeux qui bougent)

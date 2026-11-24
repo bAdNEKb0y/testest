@@ -94,7 +94,10 @@ static void tacheSonnerie(void *) {
 }
 
 // ------------------------------------------------------------------ photos en plein écran (toucher une image)
-struct DemandePhoto { String id, legende; };
+struct DemandePhoto { String id, legende; bool plan = false, centre = false; int zoom = 0; };
+static String planId, planTitre;
+static bool planCentre = false;
+static int planZoom = 15;
 static QueueHandle_t filePhotos;
 static uint16_t *photoPx = nullptr;
 static int dessinPhoto(JPEGDRAW *d) {
@@ -108,18 +111,19 @@ static void tachePhotos(void *) {
   while (true) {
     if (xQueueReceive(filePhotos, &dp, portMAX_DELAY) != pdTRUE) continue;
     Tampon t;
-    int code = relais("vignette", "GET", nullptr, nullptr, 0, t, 20000, "&t=g&id=" + dp->id);
+    int code = dp->plan ? relais("plan", "GET", nullptr, nullptr, 0, t, 25000, "&id=" + dp->id + "&z=" + String(dp->zoom))
+                        : relais("vignette", "GET", nullptr, nullptr, 0, t, 20000, "&t=g&id=" + dp->id);
     if (code == 200 && t.n > 100 && jpeg.openRAM(t.d, t.n, dessinPhoto)) {
       photoPx = (uint16_t *)heap_caps_malloc(ECRAN * ECRAN * 2, MALLOC_CAP_SPIRAM);
       if (photoPx) {
         memset(photoPx, 0, ECRAN * ECRAN * 2);
         jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
         jpeg.decode(0, 0, 0);
-        ui::photo(photoPx, dp->legende);
+        ui::photo(photoPx, dp->legende, dp->plan, dp->centre);
         photoPx = nullptr;
       }
       jpeg.close();
-    } else ui::sousTitre("Je n'arrive pas à charger cette photo.", 2500);
+    } else ui::sousTitre(dp->plan ? "Je n'arrive pas à charger la carte." : "Je n'arrive pas à charger cette photo.", 2500);
     delete dp;
   }
 }
@@ -438,6 +442,18 @@ void setup() {
     if (xQueueSend(filePhotos, &d, 0) != pdTRUE) delete d;
   };
   ui::tampon = []() { return tampons[tamponDessin]; };
+  cerveau::surPlan = [](const String &id, const String &titre, bool centre, int zoom) {
+    planId = id; planTitre = titre; planCentre = centre; planZoom = zoom;
+    ui::attenteImage();
+    DemandePhoto *d = new DemandePhoto{id, titre, true, centre, zoom};
+    if (xQueueSend(filePhotos, &d, 0) != pdTRUE) delete d;
+  };
+  ui::surZoom = [](int sens) {
+    if (!planId.length()) return;
+    planZoom = constrain(planZoom + sens, 3, 18);
+    DemandePhoto *d = new DemandePhoto{planId, planTitre, true, planCentre, planZoom};
+    if (xQueueSend(filePhotos, &d, 0) != pdTRUE) delete d;
+  };
   cerveau::surMinuteur = ajouterMinuteur;
   cerveau::surAnnulerMinuteurs = annulerMinuteurs;
   cerveau::surCarteLocale = carteLocale;

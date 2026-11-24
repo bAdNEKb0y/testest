@@ -15,4 +15,5 @@ namespace cerveau {
   extern void (*surMinuteur)(uint32_t secondes, const String &nom);
   extern void (*surAnnulerMinuteurs)();
   extern void (*surCarteLocale)(const String &quoi);
+  extern void (*surPlan)(const String &id, const String &titre, bool centre, int zoom);
 }
