@@ -438,6 +438,12 @@ void setup() {
   ui::surChoix = [](const String &t) { cerveau::question(t); };
   ui::surBouton = [](const String &id) { if (id == "stop_alarme") sonnerie = false; };
   ui::surImage = [](const String &id, const String &legende) {
+    if (id.startsWith("p:")) {  // aperçu d'un trajet : la carte en grand, qu'on peut zoomer
+      planId = id.substring(2); planTitre = "Ton trajet"; planCentre = false; planZoom = 0;
+      DemandePhoto *d = new DemandePhoto{planId, planTitre, true, false, 0};
+      if (xQueueSend(filePhotos, &d, 0) != pdTRUE) delete d;
+      return;
+    }
     DemandePhoto *d = new DemandePhoto{id, legende};
     if (xQueueSend(filePhotos, &d, 0) != pdTRUE) delete d;
   };
@@ -450,6 +456,7 @@ void setup() {
   };
   ui::surZoom = [](int sens) {
     if (!planId.length()) return;
+    if (planZoom == 0) planZoom = 15;  // zoom automatique : on part d'une valeur moyenne
     planZoom = constrain(planZoom + sens, 3, 18);
     DemandePhoto *d = new DemandePhoto{planId, planTitre, true, planCentre, planZoom};
     if (xQueueSend(filePhotos, &d, 0) != pdTRUE) delete d;

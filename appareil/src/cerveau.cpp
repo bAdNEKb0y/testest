@@ -121,7 +121,8 @@ static int dessinJpeg(JPEGDRAW *d) {
 }
 static void chargerImage(uint32_t carteId, const String &id) {
   Tampon t;
-  int code = relais("vignette", "GET", nullptr, nullptr, 0, t, 20000, "&id=" + id);
+  int code = id.startsWith("p:") ? relais("plan", "GET", nullptr, nullptr, 0, t, 25000, "&t=p&id=" + id.substring(2))
+                                 : relais("vignette", "GET", nullptr, nullptr, 0, t, 20000, "&id=" + id);
   if (code != 200 || t.n < 100) return;
   if (!jpeg) jpeg = new JPEGDEC();
   if (!jpeg->openRAM(t.d, t.n, dessinJpeg)) return;
