@@ -874,6 +874,8 @@ void ui::dessiner(uint32_t m) {
   float dt = derniereImage ? std::min<uint32_t>(m - derniereImage, 100) / 1000.f : 0.03f;
   derniereImage = m;
 
+  // --- une erreur s'affiche 2 secondes, puis on revient au calme (sinon l'écran ne se mettrait jamais en veille)
+  if (act == A_ERREUR && m - actDebut > 2000) { act = A_REPOS; ciblesPour(humeurActuelle); }
   // --- humeur temporaire terminée
   if (humeurFin && (int32_t)(m - humeurFin) > 0) { humeurFin = 0; humeurActuelle = humeurFond; ciblesPour(humeurActuelle); }
   // --- clignements et regard
