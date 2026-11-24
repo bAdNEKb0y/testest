@@ -456,8 +456,8 @@ void setup() {
   };
   ui::surZoom = [](int sens) {
     if (!planId.length()) return;
-    if (planZoom == 0) planZoom = 15;  // zoom automatique : on part d'une valeur moyenne
-    planZoom = constrain(planZoom + sens, 3, 18);
+    if (planZoom == 0) planZoom = 16;  // zoom automatique : on part d'une valeur moyenne
+    planZoom = constrain(planZoom + sens, 3, 19);
     DemandePhoto *d = new DemandePhoto{planId, planTitre, true, planCentre, planZoom};
     if (xQueueSend(filePhotos, &d, 0) != pdTRUE) delete d;
   };
