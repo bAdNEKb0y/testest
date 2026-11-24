@@ -59,6 +59,8 @@ Les infos n'apparaissent **que quand tu les demandes**, par exemple :
 - « tes infos »
 - « mets un minuteur de 10 minutes »
 
+**Boutons** : **BOOT** — appui court = parler, appui long (1,5 s) = mes infos (adresse, code). **PWR** — appui court = veille / réveil, appui long (6 s) = éteindre ; appui court quand il est éteint = rallumer.
+
 **Veille** : sans activité, il montre une grande horloge, la météo et de petits yeux. Le tout bouge un peu chaque minute pour ne pas marquer l'écran. Le jour, l'écran s'éteint 30 minutes plus tard. La nuit, il garde une petite horloge très sombre. Un toucher le réveille.
 
 ## 6. Bluetooth

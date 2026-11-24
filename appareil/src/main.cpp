@@ -31,7 +31,7 @@ static bool tactileOk = false, imuOk = false, pmuOk = false;
 
 static uint32_t derniereActivite = 0;
 static int luminositeActuelle = -1;
-static bool ecranEteint = false;
+static bool ecranEteint = false, veilleForcee = false;
 static int batterie = -1;
 static bool enCharge = false;
 
@@ -266,6 +266,7 @@ String executerCommande(const String &brute) {
 static void allumerEcran() {
   if (ecranEteint) { ecran->displayOn(); ecranEteint = false; }
   ui::modeVeille(false);
+  veilleForcee = false;
   derniereActivite = millis();
   luminositeActuelle = -1;
 }
@@ -291,6 +292,8 @@ void setup() {
   pmuOk = pmu.begin(Wire, AXP2101_SLAVE_ADDRESS, I2C_SDA, I2C_SCL);
   if (pmuOk) {
     pmu.disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
+    pmu.clearIrqStatus();
+    pmu.enableIRQ(XPOWERS_AXP2101_PKEY_SHORT_IRQ);  // bouton PWR : appui court
     pmu.enableBattDetection();
     pmu.enableBattVoltageMeasure();
     pmu.enableVbusVoltageMeasure();
@@ -396,9 +399,25 @@ void loop() {
   if (presse) derniereActivite = m;
 
   // --- bouton BOOT : parler
+  // --- bouton BOOT : appui court = parler, appui long (1,5 s) = mes infos
+  static bool bootLongFait = false;
   bool boot = digitalRead(BOUTON_BOOT) == LOW;
-  if (boot && !bootAvant && m - dernierBoot > 300) { dernierBoot = m; allumerEcran(); sonnerie = false; cerveau::parler(); }
+  if (boot && !bootAvant) { dernierBoot = m; bootLongFait = false; }
+  if (boot && !bootLongFait && m - dernierBoot > 1500) { bootLongFait = true; allumerEcran(); carteAppareil(); }
+  if (!boot && bootAvant && !bootLongFait && m - dernierBoot > 30) { allumerEcran(); sonnerie = false; cerveau::parler(); }
   bootAvant = boot;
+
+  // --- bouton PWR : appui court = veille / réveil (appui long 6 s = éteindre, géré par la puce d'alimentation)
+  static uint32_t dernierPwr = 0;
+  if (pmuOk && m - dernierPwr > 100) {
+    dernierPwr = m;
+    pmu.getIrqStatus();
+    if (pmu.isPekeyShortPressIrq()) {
+      if (ecranEteint || ui::enVeille()) allumerEcran();
+      else { cerveau::taire(); ui::fermerCarte(); ui::modeVeille(true); veilleForcee = true; }
+    }
+    pmu.clearIrqStatus();
+  }
 
   // --- capteurs : secousse
   if (imuOk && m - dernierCapteur > 40) {
@@ -453,7 +472,7 @@ void loop() {
   uint32_t inactif = m - derniereActivite;
   int lum = R.luminosite;
   // veille : grande heure, météo et petits yeux, écran plus sombre
-  bool enVeille = (R.veille > 0 && inactif > (uint32_t)R.veille * 60000) || (nuit && inactif > 30000);
+  bool enVeille = veilleForcee || (R.veille > 0 && inactif > (uint32_t)R.veille * 60000) || (nuit && inactif > 30000);
   if (enVeille != ui::enVeille() && !ui::carteOuverte()) ui::modeVeille(enVeille);
   if (nuit && inactif > 30000) lum = 10;
   else if (nuit) lum = std::min(R.luminosite, 60);
