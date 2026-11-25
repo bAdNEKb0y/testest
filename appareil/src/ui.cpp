@@ -346,6 +346,7 @@ static void miseEnPage() {
         else if (b.k == B_TEXTE && prec != B_SOUS) p.hauteur += 8;
         else if ((b.k == B_LIGNE || b.k == B_DEPART || b.k == B_JOUR || b.k == B_CASE || b.k == B_BARRE) && prec != b.k) p.hauteur += 12;
         else if (b.k == B_REPONSE) p.hauteur += 16;
+        else if (b.k == B_PETIT && prec == B_TITRE) p.hauteur += 10;
         else if (b.k == B_SOUS) p.hauteur += 6;
       }
       premier = false;
