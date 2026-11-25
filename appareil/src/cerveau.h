@@ -19,5 +19,6 @@ namespace cerveau {
   extern void (*surRadio)(const String &url, const String &nom);
   extern void (*surStopRadio)();
   extern void (*surBlindTest)(const String &url);
+  extern void (*surNePasDeranger)(int minutes);   // 0 = désactiver
   extern void (*surAlarmesChangees)();
 }

@@ -176,6 +176,7 @@ static time_t lireDate(const char *s) {  // AAAA-MM-JJTHH:MM:SS, heure de Paris
   return mktime(&tm);
 }
 static bool estLaNuit();
+static bool nePasDeranger();
 // initiative : de temps en temps, il regarde s'il a quelque chose d'utile à te dire (rappel proche, pluie, tâche…)
 static void peutEtreProposer() {
   static uint32_t dernierEssai = 0;
@@ -183,7 +184,7 @@ static void peutEtreProposer() {
   uint32_t m = millis();
   if (dernierEssai && m - dernierEssai < 40 * 60000) return;
   time_t t = time(nullptr); struct tm tm; localtime_r(&t, &tm);
-  if (tm.tm_year < 120 || tm.tm_hour < 8 || tm.tm_hour >= 21 || estLaNuit()) return;
+  if (tm.tm_year < 120 || tm.tm_hour < 8 || tm.tm_hour >= 21 || estLaNuit() || nePasDeranger()) return;
   if (tm.tm_yday != jour) { jour = tm.tm_yday; nbAujourdhui = 0; }
   if (nbAujourdhui >= 8 || ecranEteint || cerveau::occupe()) return;
   uint32_t calme = m - derniereActivite;
@@ -468,6 +469,7 @@ static void carteJeu(const char *type) {
 static void carteLocale(const String &quoi) {
   if (quoi.startsWith("tables")) { ui::tables(quoi.indexOf(':') > 0 ? quoi.substring(quoi.indexOf(':') + 1).toInt() : 0); carteJeu("tables"); }
   else if (quoi == "heure") carteHeure();
+  else if (quoi == "pas") { sauverPas(false); carteJeu("pas"); }
   else if (quoi == "lampe" || quoi == "chrono" || quoi == "respiration" || quoi == "test" || quoi == "dessin") carteOutil(quoi.c_str());
   else carteAppareil();
 }
@@ -477,6 +479,7 @@ static void appliquerTheme();
 void appliquerReglages() {
   appliquerTheme();
   ui::couleurYeux(couleur565(R.couleur));
+  ui::objectifPas = R.objectifPas;
   ui::formeYeux(R.forme);
   audio::volume(R.volume);
   audio::gainMicro(R.micro);
@@ -574,6 +577,53 @@ static bool estLaNuit() {
   return R.nuitDebut > R.nuitFin ? (h >= R.nuitDebut || h < R.nuitFin) : (h >= R.nuitDebut && h < R.nuitFin);
 }
 
+// ne pas déranger : plage horaire des réglages, ou « ne me dérange pas pendant 2 heures »
+static time_t nddJusqua = 0;
+static bool nePasDeranger() {
+  time_t t = time(nullptr);
+  if (nddJusqua && t < nddJusqua) return true;
+  if (!R.ndd || t < 1700000000) return false;
+  struct tm tm; localtime_r(&t, &tm);
+  int h = tm.tm_hour;
+  return R.nddDebut > R.nddFin ? (h >= R.nddDebut || h < R.nddFin) : (h >= R.nddDebut && h < R.nddFin);
+}
+
+// compteur de pas : pics de l'accéléromètre réguliers (entre 0,3 et 1,5 s), comptés par séries d'au moins 6
+static int pasEnAttente = 0, pasJourSauve = 0, pasJourNum = -1;
+static uint32_t dernierPas = 0;
+static float accLisse = 1, accBase = 1;
+static bool auDessus = false;
+static void compterPas(float a, uint32_t m) {
+  accLisse += (a - accLisse) * 0.35f;     // filtre le bruit
+  accBase += (a - accBase) * 0.02f;       // gravité moyenne
+  float d = accLisse - accBase;
+  if (!auDessus && d > 0.13f) {
+    auDessus = true;
+    uint32_t ecart = m - dernierPas;
+    if (ecart > 300) {                     // plus court : c'est un rebond du même pas
+      dernierPas = m;
+      if (ecart < 1500) {
+        if (pasEnAttente < 0) ui::pasJour++;
+        else if (++pasEnAttente >= 6) { ui::pasJour += pasEnAttente; pasEnAttente = -1; }   // série confirmée
+      } else pasEnAttente = 1;             // nouvelle série
+    }
+  } else if (auDessus && d < 0.04f) auDessus = false;
+}
+static void sauverPas(bool forcer) {
+  time_t t = time(nullptr);
+  if (t < 1700000000) return;
+  struct tm tm; localtime_r(&t, &tm);
+  if (pasJourNum != tm.tm_yday) {   // nouveau jour : on repart de zéro
+    if (pasJourNum >= 0) ui::pasJour = 0;
+    pasJourNum = tm.tm_yday;
+    forcer = true;
+  }
+  if (forcer || abs(ui::pasJour - pasJourSauve) >= 200) {
+    pasJourSauve = ui::pasJour;
+    Preferences pr; pr.begin("pas", false); pr.putInt("n", ui::pasJour); pr.putInt("j", pasJourNum); pr.end();
+  }
+}
+
 static volatile bool majReseau = false, demandeCode = false;
 
 void setup() {
@@ -635,6 +685,9 @@ void setup() {
     else if (id == "test_son") testSon = true;
     else if (id == "record_tables") { Preferences pr; pr.begin("jeux", false); pr.putInt("tables", ui::recordTables); pr.end(); }
     else if (id == "blindtest_encore") cerveau::question("Encore un blind test !");
+    else if (id.startsWith("sport:")) cerveau::dire(id.substring(6) + " !");
+    else if (id.startsWith("sport_repos:")) cerveau::dire("Repos. Ensuite : " + id.substring(12) + ".");
+    else if (id == "sport_fin") { cerveau::dire("Séance terminée, bravo ! Bois un peu d'eau."); ui::humeur(H_CONTENT, 5000); }
   };
   ui::surCase = [](const String &id, bool coche) {
     JsonDocument d; d["action"] = "tache_cochee"; d["id"] = id; d["fait"] = coche;
@@ -646,6 +699,11 @@ void setup() {
     envoyer(d);
   };
   ui::titreMusique = audio::titreRadio;
+  cerveau::surNePasDeranger = [](int minutes) {
+    nddJusqua = minutes > 0 ? time(nullptr) + minutes * 60 : 0;
+    if (minutes <= 0 && R.ndd) { R.ndd = false; sauverReglages(); }   // « tu peux me déranger » coupe aussi la plage horaire
+  };
+  { Preferences pr; pr.begin("pas", true); ui::pasJour = pr.getInt("n", 0); pasJourNum = pr.getInt("j", -1); pasJourSauve = ui::pasJour; pr.end(); }
   { Preferences pr; pr.begin("jeux", true); ui::recordTables = pr.getInt("tables", 0); pr.end(); }
   cerveau::surBlindTest = [](const String &url) {
     if (audio::radio(url)) { carteJeu("blindtest"); ui::humeur(H_CONTENT, 3000); }
@@ -796,7 +854,8 @@ void loop() {
     float ax, ay, az;
     if (imu.getAccelerometer(ax, ay, az)) {
       float a = sqrtf(ax * ax + ay * ay + az * az);
-      if (fabsf(a - accPrec) > 0.9f && m - derniereSecousse > 4000 && !cerveau::occupe()) {
+      compterPas(a, m);
+      if (fabsf(a - accPrec) > 0.9f && m - derniereSecousse > 4000 && !cerveau::occupe() && !nePasDeranger() && m - dernierPas > 2000) {
         derniereSecousse = m;
         allumerEcran();
         ui::humeur(H_SURPRIS, 2500);
@@ -808,6 +867,7 @@ void loop() {
   }
   if (pmuOk && (m - derniereBatterie > 30000 || derniereBatterie == 0)) {
     derniereBatterie = m;
+    sauverPas(false);
     if (pmu.isBatteryConnect()) { batterie = pmu.getBatteryPercent(); enCharge = pmu.isCharging(); }
     else { batterie = -1; enCharge = false; }
     ui::batterieFaible = batterie >= 0 && batterie <= 10 && !enCharge;
@@ -876,10 +936,13 @@ void loop() {
       c->type = "minuteur"; c->locale = true;
       c->pages.push_back({bloc(B_SOUS, "Rappel"), bloc(B_TITRE, texte), bloc(B_PETIT, "Touche l'écran pour arrêter")});
       ui::montrerCarte(c);
-      ui::humeur(H_SURPRIS, 5000);
-      sonnerie = true;
-      sonnerieDebut = m;
-      cerveau::dire("Rappel : " + texte);
+      if (nePasDeranger()) ui::humeur(H_CLIN, 3000);   // en silence : juste la carte
+      else {
+        ui::humeur(H_SURPRIS, 5000);
+        sonnerie = true;
+        sonnerieDebut = m;
+        cerveau::dire("Rappel : " + texte);
+      }
       String *f = new String(id);
       if (xQueueSend(fileRappelsFaits, &f, 0) != pdTRUE) delete f;
     }

@@ -37,6 +37,7 @@ void (*surCase)(const String &, bool) = nullptr;
 void (*surRevision)(const String &, bool) = nullptr;
 String (*titreMusique)() = nullptr;
 int recordTables = 0;
+int pasJour = 0, objectifPas = 6000;
 void (*surImage)(const String &, const String &) = nullptr;
 uint16_t *(*tampon)() = nullptr;
 void (*surZoom)(int) = nullptr;
@@ -221,7 +222,7 @@ static void ciblesPour(Humeur h) {
 }
 
 // ------------------------------------------------------------------ cartes
-enum TypeElem : uint8_t { E_TEXTE, E_IMAGE, E_PILULE, E_BADGE, E_ICONE, E_SEP, E_QR, E_RANG, E_CASE };
+enum TypeElem : uint8_t { E_TEXTE, E_IMAGE, E_PILULE, E_BADGE, E_ICONE, E_SEP, E_QR, E_RANG, E_CASE, E_FLECHE };
 struct Elem {
   TypeElem t;
   int x, y, w, h;
@@ -280,6 +281,10 @@ static void tabQuestion() {
 }
 void ui::tables(int table) { tabTable = constrain(table, 0, 12); tabDebut = 0; tabFini = false; tabScore = tabErreurs = 0; tabDernier = -1; }
 // blind test : 20 secondes d'écoute, puis la réponse
+// séance de sport : chaque page de la carte est un exercice (titre = nom, n = secondes, code = repos après)
+static uint32_t sportDebut = 0, sportPause = 0, sportCumulPause = 0;
+static int sportEtape = -1;
+void ui::sport() { sportDebut = 0; sportEtape = -1; sportPause = 0; sportCumulPause = 0; }
 static uint32_t btDebut = 0;
 static bool btRevele = false;
 static int btScore = 0, btTours = 0, btReponse = -1;
@@ -441,6 +446,13 @@ static void miseEnPage() {
           p.hauteur += h + 6;
           break;
         }
+        case B_FLECHE: {   // rose des vents (nord en haut) et flèche vers le lieu
+          Elem e{E_FLECHE, CENTRE - 80, p.hauteur, 160, 160};
+          e.code = b.n;
+          p.elems.push_back(e);
+          p.hauteur += 168;
+          break;
+        }
         case B_REPONSE: {  // carte de révision : la réponse est cachée jusqu'au toucher
           if (!b.fort) {
             Elem e{E_PILULE, CENTRE - 120, p.hauteur, 240, 48};
@@ -523,6 +535,7 @@ void ui::montrerCarte(Carte *c) {
   if (!carteVisible) { carteVisible = true; if (!memeType) carteY = ECRAN; nbCartesVues++; }
   carteOuverteA = derniereAction = millis();
   if (c->type == "respiration") respDebut = 0;
+  if (c->type == "sport") ui::sport();
   if (c->type == "blindtest") {
     if (millis() - btDebut > 15 * 60000) btScore = btTours = 0;   // nouvelle partie
     btDebut = millis(); btRevele = false; btReponse = -1; btTitre = "";
@@ -615,6 +628,12 @@ static void tape(int x, int y) {
     tabQuestion();
     return;
   }
+  if (carte->type == "sport") {   // toucher : pause / reprise
+    if (sportPause) { sportCumulPause += millis() - sportPause; sportPause = 0; }
+    else if (sportDebut) sportPause = millis();
+    return;
+  }
+  if (carte->type == "pas") return;
   if (carte->type == "blindtest") {
     if (!btRevele) { btRevele = true; btTitre = ui::titreMusique ? ui::titreMusique() : String(""); return; }
     int top = HAUT_CARTE;
@@ -1022,6 +1041,20 @@ static void dessinerPage(int idx, int dx, int base) {
         texteCentre(F_SOUS, e.s2, x, y + 114, GRIS);
         break;
       case E_QR: qr(e.s, x, y, e.w); break;
+      case E_FLECHE: {
+        int cx = x + e.w / 2, cy = y + e.h / 2, rr = e.w / 2 - 6;
+        g->drawCircle(cx, cy, rr, 0x3186); g->drawCircle(cx, cy, rr - 1, 0x3186);
+        for (int k = 0; k < 8; k++) { float a = k * 0.785398f; int l = k % 2 ? 5 : 10; g->drawLine(cx + sinf(a) * (rr - l), cy - cosf(a) * (rr - l), cx + sinf(a) * rr, cy - cosf(a) * rr, GRIS); }
+        texteCentre(F_SOUS, "N", cx, cy - rr + 30, 0xFA6F);
+        float a = e.code * 0.0174533f, sa = sinf(a), ca = cosf(a);
+        int px = cx + sa * (rr - 22), py = cy - ca * (rr - 22);
+        int bx = cx - sa * (rr - 40), by = cy + ca * (rr - 40);
+        int lx = (int)(ca * 16), ly = (int)(sa * 16);
+        g->fillTriangle(px, py, bx + lx, by + ly, bx - lx, by - ly, accent);
+        g->fillTriangle(px, py, cx + lx / 3, cy + ly / 3, cx - lx / 3, cy - ly / 3, BLANC);
+        g->fillCircle(cx, cy, 6, BLANC);
+        break;
+      }
       case E_CASE: {
         bool fait = e.bloc && e.bloc->fort;
         g->fillRoundRect(x, y + 6, 28, 28, 8, fait ? accent : 0x10A2);
@@ -1162,7 +1195,7 @@ void ui::dessiner(uint32_t m) {
   }
   // fermeture automatique quand on ne s'en sert plus
   if (carte && carteVisible && !appui && act != A_PARLE && act != A_ECOUTE && act != A_REFLECHIT) {
-    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "dessin" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche) || carte->type == "tables" || carte->type == "blindtest";
+    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "dessin" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche) || carte->type == "tables" || carte->type == "blindtest" || carte->type == "pas" || (carte->type == "sport" && sportEtape < (int)carte->pages.size());
     uint32_t delai = garde ? 0 : (carte->type == "heure" ? 25000 : 60000);
     if (delai && m - derniereAction > delai) carteVisible = false;
   }
@@ -1304,6 +1337,65 @@ void ui::dessiner(uint32_t m) {
         texteCentre(F_TEMP, String(tabA) + " x " + tabB, CENTRE, top + 120, cq);
         for (int i = 0; i < 4; i++) bouton(i % 2 ? CENTRE + 6 : CENTRE - 136, top + 152 + (i / 2) * 66, 130, 56, String(tabRep[i]), 0x10A2);
       }
+    } else if (carte->type == "pas") {
+      float f = clampf(pasJour / (float)std::max(1, objectifPas), 0, 1);
+      g->fillArc(CENTRE, CENTRE, R - 4, R - 12, 0, 360, 0x18E3);
+      if (f > 0.002f) g->fillArc(CENTRE, CENTRE, R - 4, R - 12, -90, -90 + 360 * f, f >= 1 ? 0x4F50 : accent);
+      texteCentre(F_SOUS, "Aujourd'hui", CENTRE, top + 50, accent);
+      texteCentre(F_TEMP, String(pasJour), CENTRE, top + 128, BLANC);
+      texteCentre(F_TEXTE, pasJour > 1 ? "pas" : "pas", CENTRE, top + 160, GRIS_CLAIR);
+      int dm = (int)lroundf(pasJour * 0.0068f);   // dixièmes de km (un pas ≈ 68 cm)
+      char km[24]; snprintf(km, sizeof km, "%d,%d km", dm / 10, dm % 10);
+      String kms = km;
+      texteCentre(F_FORT, kms, CENTRE, top + 200, BLANC);
+      texteCentre(F_SOUS, f >= 1 ? String("Objectif atteint, bravo !") : String("Objectif : ") + objectifPas, CENTRE, top + 232, f >= 1 ? 0x4F50 : GRIS);
+      texteCentre(F_PETIT, "garde-moi dans ta poche pour compter", CENTRE, top + 262, GRIS);
+    } else if (carte->type == "sport") {
+      int n = carte->pages.size();
+      if (!sportDebut) sportDebut = m;
+      uint32_t t = (sportPause ? sportPause : m) - sportDebut - sportCumulPause;
+      // déroulé : 5 s de préparation, puis exercice / repos
+      int etape = -1; bool repos = false; uint32_t debutPhase = 0, dureePhase = 5000, acc = 5000;
+      if (t >= 5000) {
+        etape = n;
+        for (int i = 0; i < n; i++) {
+          uint32_t ex = (uint32_t)std::max(5, carte->pages[i][0].n) * 1000, rp = i < n - 1 ? (uint32_t)std::max(0, carte->pages[i][0].code) * 1000 : 0;
+          if (t < acc + ex) { etape = i; debutPhase = acc; dureePhase = ex; break; }
+          acc += ex;
+          if (t < acc + rp) { etape = i; repos = true; debutPhase = acc; dureePhase = rp; break; }
+          acc += rp;
+        }
+      }
+      int code = etape * 2 + (repos ? 1 : 0);
+      static int dernierCode = -99;
+      if (code != dernierCode && ui::surBouton) {
+        dernierCode = code;
+        if (etape >= n) ui::surBouton("sport_fin");
+        else if (etape >= 0 && !repos) ui::surBouton("sport:" + carte->pages[etape][0].t);
+        else if (repos && etape + 1 < n) ui::surBouton("sport_repos:" + carte->pages[etape + 1][0].t);
+      }
+      sportEtape = etape;
+      if (etape >= n) {
+        texteCentre(F_SOUS, "Séance terminée", CENTRE, top + 60, accent);
+        texteCentre(F_TITRE, "Bravo !", CENTRE, top + 110, BLANC);
+        texteCentre(F_TEXTE, String(n) + " exercices", CENTRE, top + 150, GRIS_CLAIR);
+        texteCentre(F_PETIT, "pense à boire un peu d'eau", CENTRE, top + 190, GRIS);
+      } else {
+        uint32_t ecoulePhase = t - debutPhase;
+        float f = clampf(ecoulePhase / (float)std::max<uint32_t>(1, dureePhase), 0, 1);
+        uint16_t c = repos || etape < 0 ? 0x4F50 : accent;
+        g->fillArc(CENTRE, CENTRE, R - 4, R - 12, 0, 360, 0x18E3);
+        g->fillArc(CENTRE, CENTRE, R - 4, R - 12, -90, -90 + 360 * (1 - f), c);
+        String haut = etape < 0 ? String("Prépare-toi") : repos ? String("Repos · ensuite") : String("Exercice ") + (etape + 1) + " / " + n;
+        texteCentre(F_SOUS, haut, CENTRE, top + 46, c);
+        String nom = etape < 0 ? carte->pages[0][0].t : repos ? carte->pages[etape + 1][0].t : carte->pages[etape][0].t;
+        auto l = couper(F_TITRE, nom, 300, 2);
+        int y0 = top + 82;
+        for (auto &li : l) { texteCentre(F_TITRE, li, CENTRE, y0, BLANC); y0 += 30; }
+        texteCentre(F_HORLOGE, String((dureePhase - ecoulePhase) / 1000 + 1), CENTRE, top + 206, sportPause ? GRIS : BLANC);
+        if (!repos && etape >= 0 && carte->pages[etape].size() > 1) texteCentre(F_PETIT, carte->pages[etape][1].t, CENTRE, top + 236, GRIS_CLAIR);
+        texteCentre(F_PETIT, sportPause ? "en pause · touche pour reprendre" : "touche pour faire une pause", CENTRE, top + 262, GRIS);
+      }
     } else if (carte->type == "blindtest") {
       uint32_t ecoule = m - btDebut;
       if (!btRevele && ecoule > 20000) { btRevele = true; btTitre = ui::titreMusique ? ui::titreMusique() : String(""); }
@@ -1387,7 +1479,7 @@ void ui::dessiner(uint32_t m) {
     }
     // points de pages
     int n = carte->pages.size();
-    if (n > 1 && carte->type != "heure") {
+    if (n > 1 && carte->type != "heure" && carte->type != "sport") {
       int px0 = CENTRE - (n - 1) * 9;
       for (int i = 0; i < n; i++) g->fillCircle(px0 + i * 18, 446, i == page ? 5 : 3, i == page ? accent : GRIS);
     }

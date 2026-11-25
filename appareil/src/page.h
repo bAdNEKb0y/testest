@@ -69,7 +69,10 @@ button.second{background:#1a222d;color:var(--t)}button.danger{background:#2a1416
 <label><input type="checkbox" id="nuit" style="width:auto"> Mode nuit (il dort et l'écran baisse)</label>
 <div class="ligne"><div><label>de</label><input type="number" id="nuit_debut" min="0" max="23"></div><div><label>à</label><input type="number" id="nuit_fin" min="0" max="23"></div></div>
 <label><input type="checkbox" id="sous_titres" style="width:auto"> Sous-titres quand il parle</label>
-<p style="margin-top:14px"><button onclick="sauver(['forme','couleur','luminosite','veille','nuit','nuit_debut','nuit_fin','sous_titres'])">Enregistrer</button></p>
+<label><input type="checkbox" id="ndd" style="width:auto"> Ne pas déranger (pas de proposition ni de sonnerie de rappel ; les réveils sonnent)</label>
+<div class="ligne"><div><label>de</label><input type="number" id="ndd_debut" min="0" max="23"></div><div><label>à</label><input type="number" id="ndd_fin" min="0" max="23"></div></div>
+<label>Objectif de pas par jour</label><input type="number" id="objectif_pas" min="500" max="50000" step="500">
+<p style="margin-top:14px"><button onclick="sauver(['forme','couleur','luminosite','veille','nuit','nuit_debut','nuit_fin','sous_titres','ndd','ndd_debut','ndd_fin','objectif_pas'])">Enregistrer</button></p>
 </section>
 
 <section><h2>Premier essai</h2>

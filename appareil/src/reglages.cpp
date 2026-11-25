@@ -31,6 +31,10 @@ void chargerReglages() {
   R.nuitFin = P.getInt("nuitF", R.nuitFin);
   R.nuit = P.getBool("nuit", R.nuit);
   R.sousTitres = P.getBool("st", R.sousTitres);
+  R.ndd = P.getBool("ndd", R.ndd);
+  R.nddDebut = P.getInt("nddD", R.nddDebut);
+  R.nddFin = P.getInt("nddF", R.nddFin);
+  R.objectifPas = P.getInt("objPas", R.objectifPas);
   R.pin = P.getString("pin", "");
   R.astuces = P.getInt("astuces", 0);
   int n = P.getInt("nres", 0);
@@ -65,6 +69,10 @@ void sauverReglages() {
   P.putInt("nuitF", R.nuitFin);
   P.putBool("nuit", R.nuit);
   P.putBool("st", R.sousTitres);
+  P.putBool("ndd", R.ndd);
+  P.putInt("nddD", R.nddDebut);
+  P.putInt("nddF", R.nddFin);
+  P.putInt("objPas", R.objectifPas);
   P.putString("pin", R.pin);
   P.putInt("astuces", R.astuces);
   P.putInt("nres", R.reseaux.size());

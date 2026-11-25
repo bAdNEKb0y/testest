@@ -63,6 +63,7 @@ static String reglagesJson() {
   char c[8]; snprintf(c, sizeof c, "#%06X", (unsigned)R.couleur); d["couleur"] = c;
   d["forme"] = R.forme; d["luminosite"] = R.luminosite; d["volume"] = R.volume; d["micro"] = R.micro; d["sens_toucher"] = R.sensToucher; d["veille"] = R.veille;
   d["nuit"] = R.nuit; d["nuit_debut"] = R.nuitDebut; d["nuit_fin"] = R.nuitFin; d["sous_titres"] = R.sousTitres;
+  d["ndd"] = R.ndd; d["ndd_debut"] = R.nddDebut; d["ndd_fin"] = R.nddFin; d["objectif_pas"] = R.objectifPas;
   JsonArray rs = d["reseaux"].to<JsonArray>();
   for (auto &r : R.reseaux) rs.add(r.ssid);
   String s; serializeJson(d, s); return s;
@@ -96,6 +97,10 @@ static void routes() {
     if (!d["sens_toucher"].isNull()) R.sensToucher = constrain(d["sens_toucher"].as<int>(), 0, 3);
     if (!d["veille"].isNull()) R.veille = constrain(d["veille"].as<int>(), 0, 120);
     if (!d["nuit"].isNull()) R.nuit = d["nuit"].as<bool>();
+    if (!d["ndd"].isNull()) R.ndd = d["ndd"].as<bool>();
+    if (!d["ndd_debut"].isNull()) R.nddDebut = constrain(d["ndd_debut"].as<int>(), 0, 23);
+    if (!d["ndd_fin"].isNull()) R.nddFin = constrain(d["ndd_fin"].as<int>(), 0, 23);
+    if (!d["objectif_pas"].isNull()) R.objectifPas = constrain(d["objectif_pas"].as<int>(), 500, 50000);
     if (!d["nuit_debut"].isNull()) R.nuitDebut = constrain(d["nuit_debut"].as<int>(), 0, 23);
     if (!d["nuit_fin"].isNull()) R.nuitFin = constrain(d["nuit_fin"].as<int>(), 0, 23);
     if (!d["sous_titres"].isNull()) R.sousTitres = d["sous_titres"].as<bool>();

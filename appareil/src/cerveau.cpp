@@ -15,6 +15,7 @@ void (*surCarteLocale)(const String &) = nullptr;
 void (*surPlan)(const String &, const String &, bool, int) = nullptr;
 void (*surRadio)(const String &, const String &) = nullptr;
 void (*surBlindTest)(const String &) = nullptr;
+void (*surNePasDeranger)(int) = nullptr;
 void (*surStopRadio)() = nullptr;
 void (*surAlarmesChangees)() = nullptr;
 }
@@ -52,7 +53,8 @@ static void tacheSon(void *) {
   }
 }
 
-static String langueVoix;   // traduction : la voix lit aussi la langue étrangère
+static String langueVoix;
+static float debitVoix = 0;   // dictée : la voix ralentit   // traduction : la voix lit aussi la langue étrangère
 static std::vector<String> decouper(const String &t) {
   std::vector<String> morceaux;
   String cur;
@@ -86,7 +88,7 @@ static bool parlerTexte(const String &texte, uint32_t gen, std::function<void()>
     JsonDocument d;
     d["texte"] = m;
     d["voix"] = R.voix;
-    d["debit"] = R.debit;
+    d["debit"] = debitVoix > 0.5f ? debitVoix : R.debit;
     d["format"] = "pcm";
     if (langueVoix.length()) d["langue"] = langueVoix;
     String corps;
@@ -172,6 +174,7 @@ static Carte *construireCarte(JsonObject e, std::vector<String> &images) {
       }
       else if (k == "meteo") { b.k = B_METEO; b.code = bj["code"] | 0; b.t = bj["temp"] | ""; b.l = bj["info"] | ""; }
       else if (k == "qr") { b.k = B_QR; }
+      else if (k == "fleche") { b.k = B_FLECHE; b.n = bj["angle"] | 0; }
       else if (k == "case") { b.k = B_CASE; b.id = bj["id"] | ""; b.fort = bj["fait"] | false; }
       else if (k == "reponse") { b.k = B_REPONSE; b.id = bj["id"] | ""; }
       else if (k == "jour") { b.k = B_JOUR; b.t = bj["j"] | ""; b.code = bj["code"] | 0; b.v = bj["min"] | ""; b.l = bj["max"] | ""; b.pluie = bj["pluie"] | -1; }
@@ -236,6 +239,7 @@ static void reflechir(const String &texte, uint32_t gen) {
   String titre = ui::titreCarte();
   if (titre.length()) req["fiche_ouverte"] = titre;
   if (jeuSecret.length()) req["jeu_secret"] = jeuSecret;
+  if (ui::pasJour > 0) req["pas"] = ui::pasJour;
   if (ui::typeCarte() == "blindtest") req["blindtest"] = audio::titreRadio().length() ? audio::titreRadio() : String("(titre inconnu)");
   String corps;
   serializeJson(req, corps);
@@ -252,12 +256,14 @@ static void reflechir(const String &texte, uint32_t gen) {
   while (historique.size() > 10) historique.erase(historique.begin());
   jeuSecret = r["jeu_secret"] | "";
   langueVoix = r["langue"] | "";
+  debitVoix = r["debit"] | 0.0f;
   etat = "prêt";
 
   Humeur h = humeurDe(r["humeur"] | "neutre");
   ui::humeur(h, h == H_NEUTRE ? 0 : 6000 + reponse.length() * 55);
   String radioApres, radioNom;
   bool blindTest = false;
+  Carte *sportCarte = nullptr;
   for (JsonObject a : r["actions"].as<JsonArray>()) {
     String type = a["type"] | "";
     if (type == "minuteur" && cerveau::surMinuteur) cerveau::surMinuteur(a["secondes"] | 60, a["nom"] | "Minuteur");
@@ -266,8 +272,20 @@ static void reflechir(const String &texte, uint32_t gen) {
     else if (type == "musique" && cerveau::surRadio) { radioApres = a["url"] | ""; radioNom = a["nom"] | "Radio"; blindTest = String(a["jeu"] | "") == "blindtest"; }
     else if (type == "stop_musique" && cerveau::surStopRadio) cerveau::surStopRadio();
     else if (type == "alarmes" && cerveau::surAlarmesChangees) cerveau::surAlarmesChangees();
+    else if (type == "ndd" && cerveau::surNePasDeranger) cerveau::surNePasDeranger(a["minutes"] | 0);
+    else if (type == "sport") {   // séance guidée : une page par exercice, le boîtier la déroule tout seul
+      Carte *c = new Carte();
+      c->type = "sport"; c->locale = true;
+      for (JsonObject e : a["exos"].as<JsonArray>()) {
+        Bloc t; t.k = B_TITRE; t.t = e["nom"] | "Exercice"; t.n = e["sec"] | 30; t.code = a["repos"] | 10;
+        Bloc p; p.k = B_PETIT; p.t = e["conseil"] | "";
+        c->pages.push_back({t, p});
+      }
+      if (c->pages.empty()) delete c; else { sportCarte = c; }
+    }
     else if (type == "plan" && cerveau::surPlan) cerveau::surPlan(a["id"] | "", a["titre"] | "", a["centre"] | false, a["zoom"] | 15);
   }
+  if (sportCarte) { ui::montrerCarte(sportCarte); r.remove("ecran"); }
   std::vector<String> images;
   uint32_t carteId = 0;
   if (r["ecran"].is<JsonObject>()) {

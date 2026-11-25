@@ -8,7 +8,7 @@ class Arduino_GFX;
 enum Humeur : uint8_t { H_NEUTRE, H_CONTENT, H_PERDU, H_SURPRIS, H_FACHE, H_TRISTE, H_CLIN, H_DORT, H_AMOUR };
 enum Activite : uint8_t { A_REPOS, A_ECOUTE, A_REFLECHIT, A_PARLE, A_ERREUR, A_CONFIG };
 
-enum TypeBloc : uint8_t { B_TITRE, B_SOUS, B_TEXTE, B_PETIT, B_LIGNE, B_PUCE, B_IMAGE, B_CHOIX, B_DEPART, B_METEO, B_JOUR, B_QR, B_BOUTON, B_CASE, B_REPONSE };
+enum TypeBloc : uint8_t { B_TITRE, B_SOUS, B_TEXTE, B_PETIT, B_LIGNE, B_PUCE, B_IMAGE, B_CHOIX, B_DEPART, B_METEO, B_JOUR, B_QR, B_BOUTON, B_CASE, B_REPONSE, B_FLECHE };
 
 struct Bloc {
   TypeBloc k = B_TEXTE;
@@ -61,7 +61,9 @@ namespace ui {
   extern void (*surRevision)(const String &id, bool su);    // carte de révision : « je savais » / « à revoir »
   extern String (*titreMusique)();              // titre du morceau annoncé par la radio (blind test)
   extern int recordTables;                      // meilleur score aux tables de multiplication
-  void tables(int table);                       // lance le jeu des tables (0 = toutes)
+  void tables(int table);
+  extern int pasJour, objectifPas;              // compteur de pas du jour
+  void sport();                                 // (re)démarre la séance de sport de la carte ouverte                       // lance le jeu des tables (0 = toutes)
   extern void (*surImage)(const String &id, const String &legende);  // toucher une photo : la voir en grand
   void photo(uint16_t *px466, const String &legende, bool plan = false, bool epingle = false);  // plein écran (466 x 466, prend possession)
   extern void (*surZoom)(int sens);             // carte : glisser vers le haut = zoomer, vers le bas = dézoomer

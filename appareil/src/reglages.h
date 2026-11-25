@@ -24,6 +24,9 @@ struct Reglages {
   int nuitDebut = 22, nuitFin = 7;
   bool nuit = true;           // mode nuit (visage endormi, écran sombre)
   bool sousTitres = true;
+  bool ndd = false;           // ne pas déranger (plage horaire) : ni proposition, ni sonnerie de rappel ; les réveils sonnent quand même
+  int nddDebut = 12, nddFin = 14;
+  int objectifPas = 6000;
   String pin;                 // code à 6 chiffres pour la page de réglages et le Bluetooth
   std::vector<Reseau> reseaux;
   int astuces = 0;            // combien de fois on a déjà montré les astuces
