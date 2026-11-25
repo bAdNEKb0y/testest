@@ -1141,8 +1141,10 @@ static void dessinerPage(int idx, int dx, int base) {
         break;
       }
       case E_BARRE: {
-        texte(F_TEXTE, e.s, x, y + 18, BLANC);
-        texte(F_FORT, e.s2, x + e.w - largeur(F_FORT, e.s2), y + 18, BLANC);
+        int lv = largeur(F_FORT, e.s2);
+        auto l1 = couper(F_TEXTE, e.s, std::max(40, e.w - lv - 14), 1);   // le nom ne passe jamais sous le chiffre
+        texte(F_TEXTE, l1.empty() ? String("") : l1[0], x, y + 18, BLANC);
+        texte(F_FORT, e.s2, x + e.w - lv, y + 18, BLANC);
         g->fillRoundRect(x, y + 28, e.w, 10, 5, 0x2124);
         int w = std::max(10, e.w * std::min(1000, std::max(0, e.code)) / 1000);
         g->fillRoundRect(x, y + 28, w, 10, 5, e.c ? e.c : accent);
