@@ -706,6 +706,7 @@ void setup() {
   ui::titreMusique = audio::titreRadio;
   cerveau::surInvite = [](bool actif) {
     cerveau::modeInvite = actif;
+    ui::invite = actif;
     inviteJusqua = actif ? time(nullptr) + 4 * 3600 : 0;
   };
   cerveau::surPauses = [](int minutes, int heures) {
@@ -849,7 +850,7 @@ void loop() {
   }
   if (boot && !bootLongFait && m - dernierBoot > 1500) {
     bootLongFait = true; clicEnAttente = 0; allumerEcran();
-    if (cerveau::modeInvite) { cerveau::modeInvite = false; inviteJusqua = 0; ui::humeur(H_CONTENT, 3000); ui::sousTitre("Mode invité terminé. Re-bonjour !", 3500); }
+    if (cerveau::modeInvite) { cerveau::modeInvite = false; ui::invite = false; inviteJusqua = 0; ui::humeur(H_CONTENT, 3000); ui::sousTitre("Mode invité terminé. Re-bonjour !", 3500); }
     else carteAppareil();
   }
   if (!boot && bootAvant && !bootLongFait && m - dernierBoot > 30) clicEnAttente = m;
@@ -957,7 +958,7 @@ void loop() {
       id = "";
     }
     // fin du mode invité au bout de 4 h, et pauses écran
-    if (cerveau::modeInvite && inviteJusqua && maintenant > inviteJusqua) { cerveau::modeInvite = false; inviteJusqua = 0; }
+    if (cerveau::modeInvite && inviteJusqua && maintenant > inviteJusqua) { cerveau::modeInvite = false; ui::invite = false; inviteJusqua = 0; }
     if (pauseIntervalle && (int32_t)(millis() - finPauses) > 0) pauseIntervalle = 0;
     if (pauseIntervalle && (int32_t)(millis() - prochainePause) > 0) {
       prochainePause = millis() + pauseIntervalle;

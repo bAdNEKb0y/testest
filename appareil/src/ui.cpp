@@ -44,6 +44,7 @@ void (*surZoom)(int) = nullptr;
 String (*infosAppareil)() = nullptr;
 bool batterieFaible = false;
 bool horsLigne = false;
+bool invite = false;
 }
 
 // ------------------------------------------------------------------ outils
@@ -1196,6 +1197,7 @@ static void dessinerVeille(uint32_t m, float a) {
     g->fillArc(CENTRE, CENTRE, R - 1, R - 4, -90, -90 + 360 * f, attenue(accent, 0.6f * a));
   }
   if (ui::batterieFaible) texteCentre(F_PETIT, "batterie faible", CENTRE + dx, 60 + dy, ROUGE);
+  else if (ui::invite) texteCentre(F_PETIT, "mode invité", CENTRE + dx, 60 + dy, attenue(accent, 0.8f));
   if (ui::horsLigne) g->fillCircle(CENTRE + dx, 420 + dy, 3, attenue(ROUGE, a));
 }
 

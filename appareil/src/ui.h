@@ -83,4 +83,5 @@ namespace ui {
   extern String (*infosAppareil)();
   extern bool batterieFaible;
   extern bool horsLigne;
+  extern bool invite;                           // mode invité : petit badge sous le visage
 }
