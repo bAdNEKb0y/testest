@@ -174,6 +174,8 @@ static Carte *construireCarte(JsonObject e, std::vector<String> &images) {
       }
       else if (k == "meteo") { b.k = B_METEO; b.code = bj["code"] | 0; b.t = bj["temp"] | ""; b.l = bj["info"] | ""; }
       else if (k == "qr") { b.k = B_QR; }
+      else if (k == "graphe") { b.k = B_GRAPHE; for (JsonVariant v : bj["items"].as<JsonArray>()) b.items.push_back(v.as<String>()); }
+      else if (k == "barre") { b.k = B_BARRE; b.l = bj["l"] | ""; b.v = bj["v"] | ""; b.n = bj["f"] | 0; b.c = couleurHex(bj["c"] | "", 0); }
       else if (k == "fleche") { b.k = B_FLECHE; b.n = bj["angle"] | 0; }
       else if (k == "case") { b.k = B_CASE; b.id = bj["id"] | ""; b.fort = bj["fait"] | false; }
       else if (k == "reponse") { b.k = B_REPONSE; b.id = bj["id"] | ""; }

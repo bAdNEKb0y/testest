@@ -222,7 +222,7 @@ static void ciblesPour(Humeur h) {
 }
 
 // ------------------------------------------------------------------ cartes
-enum TypeElem : uint8_t { E_TEXTE, E_IMAGE, E_PILULE, E_BADGE, E_ICONE, E_SEP, E_QR, E_RANG, E_CASE, E_FLECHE };
+enum TypeElem : uint8_t { E_TEXTE, E_IMAGE, E_PILULE, E_BADGE, E_ICONE, E_SEP, E_QR, E_RANG, E_CASE, E_FLECHE, E_GRAPHE, E_BARRE };
 struct Elem {
   TypeElem t;
   int x, y, w, h;
@@ -444,6 +444,20 @@ static void miseEnPage() {
           e.s = lignes[0]; e.s2 = lignes.size() > 1 ? lignes[1] : ""; e.bloc = &b;
           p.elems.push_back(e);
           p.hauteur += h + 6;
+          break;
+        }
+        case B_GRAPHE: {   // météo de la semaine : max en orange, min en bleu, pluie en barres
+          Elem e{E_GRAPHE, CENTRE - 150, p.hauteur, 300, 190};
+          e.bloc = &b;
+          p.elems.push_back(e);
+          p.hauteur += 198;
+          break;
+        }
+        case B_BARRE: {    // une ligne avec une barre proportionnelle (dépenses par catégorie…)
+          Elem e{E_BARRE, COL_X + 14, p.hauteur, COL_W - 28, 44};
+          e.s = b.l; e.s2 = b.v; e.code = b.n; e.c = b.c;
+          p.elems.push_back(e);
+          p.hauteur += 50;
           break;
         }
         case B_FLECHE: {   // rose des vents (nord en haut) et flèche vers le lieu
@@ -1041,6 +1055,47 @@ static void dessinerPage(int idx, int dx, int base) {
         texteCentre(F_SOUS, e.s2, x, y + 114, GRIS);
         break;
       case E_QR: qr(e.s, x, y, e.w); break;
+      case E_GRAPHE: {
+        auto &it = e.bloc->items;
+        int n = std::min<int>(it.size(), 7);
+        if (n < 2) break;
+        int mn[7], mx[7], pl[7]; String jr[7];
+        int lo = 99, hi = -99;
+        for (int i = 0; i < n; i++) {
+          String s = it[i]; int a1 = s.indexOf('|'), a2 = s.indexOf('|', a1 + 1), a3 = s.indexOf('|', a2 + 1);
+          jr[i] = s.substring(0, a1); mn[i] = s.substring(a1 + 1, a2).toInt(); mx[i] = s.substring(a2 + 1, a3).toInt(); pl[i] = s.substring(a3 + 1).toInt();
+          lo = std::min(lo, mn[i]); hi = std::max(hi, mx[i]);
+        }
+        if (hi - lo < 6) { hi += 3; lo -= 3; }
+        int gx = x + 18, gw = e.w - 36, gy = y + 26, gh = 100;
+        auto px = [&](int i) { return gx + (n == 1 ? gw / 2 : i * gw / (n - 1)); };
+        auto py = [&](int v) { return gy + gh - (v - lo) * gh / (hi - lo); };
+        for (int i = 0; i < n; i++) {   // pluie : barres en bas
+          int bh = pl[i] * 30 / 100;
+          if (bh > 1) g->fillRoundRect(px(i) - 9, y + 162 - bh, 18, bh, 4, attenue(0x3D7F, 0.55f));
+          if (pl[i] >= 30) texteCentre(F_PETIT, String(pl[i]) + "%", px(i), y + 160 - bh - 4, 0x5DDF);
+          texteCentre(F_PETIT, jr[i], px(i), y + 184, i == 0 ? BLANC : GRIS);
+        }
+        for (int i = 0; i + 1 < n; i++)
+          for (int k = -1; k <= 1; k++) {
+            g->drawLine(px(i), py(mx[i]) + k, px(i + 1), py(mx[i + 1]) + k, 0xFD20);
+            g->drawLine(px(i), py(mn[i]) + k, px(i + 1), py(mn[i + 1]) + k, 0x5DDF);
+          }
+        for (int i = 0; i < n; i++) {
+          g->fillCircle(px(i), py(mx[i]), 4, 0xFD20); g->fillCircle(px(i), py(mn[i]), 4, 0x5DDF);
+          texteCentre(F_PETIT, String(mx[i]) + "°", px(i), py(mx[i]) - 8, BLANC);
+          texteCentre(F_PETIT, String(mn[i]) + "°", px(i), py(mn[i]) + 19, GRIS_CLAIR);
+        }
+        break;
+      }
+      case E_BARRE: {
+        texte(F_TEXTE, e.s, x, y + 18, BLANC);
+        texte(F_FORT, e.s2, x + e.w - largeur(F_FORT, e.s2), y + 18, BLANC);
+        g->fillRoundRect(x, y + 28, e.w, 10, 5, 0x2124);
+        int w = std::max(10, e.w * std::min(1000, std::max(0, e.code)) / 1000);
+        g->fillRoundRect(x, y + 28, w, 10, 5, e.c ? e.c : accent);
+        break;
+      }
       case E_FLECHE: {
         int cx = x + e.w / 2, cy = y + e.h / 2, rr = e.w / 2 - 6;
         g->drawCircle(cx, cy, rr, 0x3186); g->drawCircle(cx, cy, rr - 1, 0x3186);
