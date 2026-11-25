@@ -165,9 +165,46 @@ static time_t lireDate(const char *s) {  // AAAA-MM-JJTHH:MM:SS, heure de Paris
   tm.tm_year -= 1900; tm.tm_mon -= 1; tm.tm_isdst = -1;
   return mktime(&tm);
 }
+static bool estLaNuit();
+// initiative : de temps en temps, il regarde s'il a quelque chose d'utile à te dire (rappel proche, pluie, tâche…)
+static void peutEtreProposer() {
+  static uint32_t dernierEssai = 0;
+  static int jour = -1, nbAujourdhui = 0;
+  uint32_t m = millis();
+  if (dernierEssai && m - dernierEssai < 40 * 60000) return;
+  time_t t = time(nullptr); struct tm tm; localtime_r(&t, &tm);
+  if (tm.tm_year < 120 || tm.tm_hour < 8 || tm.tm_hour >= 21 || estLaNuit()) return;
+  if (tm.tm_yday != jour) { jour = tm.tm_yday; nbAujourdhui = 0; }
+  if (nbAujourdhui >= 8 || ecranEteint || cerveau::occupe()) return;
+  uint32_t calme = m - derniereActivite;
+  if (calme < 2 * 60000 || calme > 3 * 3600000UL) return;   // quelqu'un est passé récemment, mais ne lui parle pas en ce moment
+  dernierEssai = m;
+  Tampon r;
+  if (relais("proactif", "POST", "application/json", (const uint8_t *)"{}", 2, r, 40000) != 200) return;
+  JsonDocument d;
+  if (deserializeJson(d, r.d, r.n) || (d["rien"] | false)) return;
+  String dire = d["dire"] | "", idee = d["idee"] | "", h = d["humeur"] | "neutre";
+  if (!dire.length()) return;
+  nbAujourdhui++;
+  ui::modeVeille(false);
+  ui::humeur(h == "content" ? H_CONTENT : h == "surpris" ? H_SURPRIS : h == "clin" ? H_CLIN : H_NEUTRE, 8000);
+  audio::bip(988, 70, 0.1f);
+  audio::bip(1319, 90, 0.1f);
+  if (idee.length()) {
+    Carte *c = new Carte();
+    c->type = "idees"; c->locale = true;
+    Bloc ch; ch.k = B_CHOIX; ch.items.push_back(idee); ch.items.push_back("Non merci");
+    Bloc t; t.k = B_TEXTE; t.t = dire;
+    c->pages.push_back({t, ch});
+    ui::montrerCarte(c);
+  }
+  cerveau::dire(dire);
+}
+
 static void tacheRappels(void *) {
   uint32_t dernier = 0;
   while (true) {
+    if (reseau::connecte() && R.serveur.length() && R.code.length()) peutEtreProposer();
     String *fait;
     if (xQueueReceive(fileRappelsFaits, &fait, pdMS_TO_TICKS(1000)) == pdTRUE) {
       bool alarme = fait->startsWith("A:");
@@ -520,7 +557,10 @@ void setup() {
 
   // liaisons entre les modules
   ui::surParler = []() { allumerEcran(); sonnerie = false; cerveau::parler(); };
-  ui::surChoix = [](const String &t) { cerveau::question(t); };
+  ui::surChoix = [](const String &t) {
+    if (t == "Non merci") { ui::fermerCarte(); ui::humeur(H_CLIN, 2000); return; }
+    cerveau::question(t);
+  };
   ui::surBouton = [](const String &id) {
     if (id == "stop_alarme") sonnerie = false;
     else if (id == "stop_reveil") finReveil(false);
