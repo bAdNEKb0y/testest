@@ -38,6 +38,8 @@ void (*surRevision)(const String &, bool) = nullptr;
 String (*titreMusique)() = nullptr;
 int recordTables = 0;
 int pasJour = 0, objectifPas = 6000;
+float bruitDb = 0, bulleX = 0, bulleY = 0;
+int recordReflexes = 0;
 void (*surImage)(const String &, const String &) = nullptr;
 uint16_t *(*tampon)() = nullptr;
 void (*surZoom)(int) = nullptr;
@@ -328,6 +330,11 @@ void ui::tables(int table) { tabTable = constrain(table, 0, 12); tabDebut = 0; t
 static uint32_t sportDebut = 0, sportPause = 0, sportCumulPause = 0;
 static int sportEtape = -1;
 void ui::sport() { sportDebut = 0; sportEtape = -1; sportPause = 0; sportCumulPause = 0; }
+// réflexes : touche dès que l'écran devient vert
+static int rfEtat = 0;            // 0 prêt, 1 attends, 2 vert, 3 résultat, 4 trop tôt
+static uint32_t rfVert = 0, rfTemps = 0, rfChange = 0;
+static int rfEssais = 0, rfTotal = 0;
+static float bruitMax = 0;
 static uint32_t btDebut = 0;
 static bool btRevele = false;
 static int btScore = 0, btTours = 0, btReponse = -1;
@@ -609,6 +616,8 @@ void ui::montrerCarte(Carte *c) {
   carteOuverteA = derniereAction = millis();
   if (c->type == "respiration") respDebut = 0;
   if (c->type == "sport") ui::sport();
+  if (c->type == "reflexes") { rfEtat = 0; rfEssais = rfTotal = 0; }
+  if (c->type == "bruit") bruitMax = 0;
   if (c->type == "blindtest") {
     if (millis() - btDebut > 15 * 60000) btScore = btTours = 0;   // nouvelle partie
     btDebut = millis(); btRevele = false; btReponse = -1; btTitre = "";
@@ -706,7 +715,18 @@ static void tape(int x, int y) {
     else if (sportDebut) sportPause = millis();
     return;
   }
-  if (carte->type == "pas") return;
+  if (carte->type == "pas" || carte->type == "niveau") return;
+  if (carte->type == "bruit") { bruitMax = 0; return; }   // toucher : remet le maximum à zéro
+  if (carte->type == "reflexes") {
+    uint32_t mm = millis();
+    if (rfEtat == 0 || ((rfEtat == 3 || rfEtat == 4) && mm - rfChange > 600)) { rfEtat = 1; rfChange = mm; rfVert = mm + 1500 + esp_random() % 2500; return; }
+    if (rfEtat == 1) { rfEtat = 4; rfChange = mm; return; }   // trop tôt !
+    if (rfEtat == 2) {
+      rfTemps = mm - rfVert; rfEtat = 3; rfChange = mm; rfEssais++; rfTotal += rfTemps;
+      if (!ui::recordReflexes || (int)rfTemps < ui::recordReflexes) { ui::recordReflexes = rfTemps; if (ui::surBouton) ui::surBouton("record_reflexes"); }
+    }
+    return;
+  }
   if (carte->type == "blindtest") {
     if (!btRevele) { btRevele = true; btTitre = ui::titreMusique ? ui::titreMusique() : String(""); return; }
     int top = HAUT_CARTE;
@@ -1341,7 +1361,7 @@ void ui::dessiner(uint32_t m) {
   }
   // fermeture automatique quand on ne s'en sert plus
   if (carte && carteVisible && !appui && act != A_PARLE && act != A_ECOUTE && act != A_REFLECHIT) {
-    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "dessin" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche) || carte->type == "tables" || carte->type == "blindtest" || carte->type == "pas" || (carte->type == "sport" && sportEtape < (int)carte->pages.size());
+    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "dessin" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche) || carte->type == "tables" || carte->type == "blindtest" || carte->type == "pas" || carte->type == "bruit" || carte->type == "niveau" || carte->type == "reflexes" || (carte->type == "sport" && sportEtape < (int)carte->pages.size());
     uint32_t delai = garde ? 0 : (carte->type == "heure" ? 25000 : 60000);
     if (delai && m - derniereAction > delai) carteVisible = false;
   }
@@ -1482,6 +1502,60 @@ void ui::dessiner(uint32_t m) {
         if (tabDernier >= 0 && m - tabFlash < 350) cq = tabDernier ? 0x4F50 : 0xFA6F;
         texteCentre(F_TEMP, String(tabA) + " x " + tabB, CENTRE, top + 120, cq);
         for (int i = 0; i < 4; i++) bouton(i % 2 ? CENTRE + 6 : CENTRE - 136, top + 152 + (i / 2) * 66, 130, 56, String(tabRep[i]), 0x10A2);
+      }
+    } else if (carte->type == "bruit") {
+      float db = bruitDb;
+      if (db > bruitMax) bruitMax = db;
+      float f = clampf((db - 30) / 80.f, 0, 1);
+      uint16_t c = db < 60 ? 0x4F50 : db < 80 ? 0xFD20 : 0xFA6F;
+      g->fillArc(CENTRE, CENTRE, R - 4, R - 14, 135, 405, 0x18E3);
+      if (f > 0.01f) g->fillArc(CENTRE, CENTRE, R - 4, R - 14, 135, 135 + 270 * f, c);
+      texteCentre(F_SOUS, "Bruit autour de moi", CENTRE, top + 46, accent);
+      texteCentre(F_TEMP, db > 1 ? String((int)lroundf(db)) : String("--"), CENTRE, top + 124, BLANC);
+      texteCentre(F_TEXTE, "décibels (environ)", CENTRE, top + 156, GRIS_CLAIR);
+      const char *qual = db < 40 ? "Très calme" : db < 55 ? "Calme" : db < 70 ? "Conversation" : db < 85 ? "Bruyant" : "Trop fort pour les oreilles !";
+      texteCentre(F_FORT, qual, CENTRE, top + 194, c);
+      texteCentre(F_PETIT, String("max ") + (int)lroundf(bruitMax) + " dB · touche pour remettre à zéro", CENTRE, top + 230, GRIS);
+    } else if (carte->type == "niveau") {
+      // la bulle va du côté le plus haut ; à plat, elle reste au centre
+      float bx = clampf(-bulleX, -0.35f, 0.35f) / 0.35f, by = clampf(bulleY, -0.35f, 0.35f) / 0.35f;
+      float ang = atan2f(sqrtf(bulleX * bulleX + bulleY * bulleY), 1.0f) * 57.2958f;
+      bool droit = ang < 1.0f;
+      uint16_t c = droit ? 0x4F50 : ang < 3 ? 0xFD20 : accent;
+      int cy0 = top + 120, rv = 96;
+      g->drawCircle(CENTRE, cy0, rv, 0x3186); g->drawCircle(CENTRE, cy0, rv - 1, 0x3186);
+      g->drawCircle(CENTRE, cy0, 22, GRIS); g->drawFastHLine(CENTRE - rv, cy0, rv * 2, 0x2124); g->drawFastVLine(CENTRE, cy0 - rv, rv * 2, 0x2124);
+      int px = CENTRE + (int)(bx * (rv - 22)), py = cy0 + (int)(by * (rv - 22));
+      g->fillCircle(px, py, 18, attenue(c, 0.85f)); g->fillCircle(px - 5, py - 6, 5, BLANC);
+      char t[24]; snprintf(t, sizeof t, "%d,%d°", (int)ang, (int)(ang * 10) % 10);
+      texteCentre(F_TITRE, droit ? String("C'est droit !") : String(t), CENTRE, top + 258, droit ? 0x4F50 : BLANC);
+    } else if (carte->type == "reflexes") {
+      uint32_t mm = m;
+      if (rfEtat == 1 && (int32_t)(mm - rfVert) >= 0) rfEtat = 2;
+      uint16_t fond = rfEtat == 1 ? 0xC0A3 : rfEtat == 2 ? 0x2E8A : 0;
+      if (fond) g->fillCircle(CENTRE, CENTRE, R - 6, fond);
+      if (rfEtat == 0) {
+        texteCentre(F_SOUS, "Réflexes", CENTRE, top + 52, accent);
+        texteCentre(F_TITRE, "Touche dès que", CENTRE, top + 100, BLANC);
+        texteCentre(F_TITRE, "l'écran devient vert", CENTRE, top + 130, BLANC);
+        if (ui::recordReflexes) texteCentre(F_SOUS, String("Record : ") + ui::recordReflexes + " ms", CENTRE, top + 174, GRIS);
+        texteCentre(F_FORT, "Touche pour commencer", CENTRE, top + 220, accent);
+      } else if (rfEtat == 1) {
+        texteCentre(F_TITRE, "Attends le vert...", CENTRE, CENTRE + 10, BLANC);
+      } else if (rfEtat == 2) {
+        texteCentre(F_TEMP, "VITE !", CENTRE, CENTRE + 24, BLANC);
+      } else if (rfEtat == 3) {
+        texteCentre(F_SOUS, rfEssais > 1 ? String("Moyenne ") + (rfTotal / rfEssais) + " ms sur " + rfEssais : String("Ton temps"), CENTRE, top + 52, accent);
+        texteCentre(F_TEMP, String(rfTemps), CENTRE, top + 132, BLANC);
+        texteCentre(F_TEXTE, "millisecondes", CENTRE, top + 164, GRIS_CLAIR);
+        const char *av = rfTemps < 200 ? "Réflexes de pilote !" : rfTemps < 260 ? "Très rapide" : rfTemps < 350 ? "Pas mal" : "Encore un essai ?";
+        texteCentre(F_FORT, (int)rfTemps <= ui::recordReflexes ? "Nouveau record !" : av, CENTRE, top + 202, (int)rfTemps <= ui::recordReflexes ? 0xFE60 : BLANC);
+        texteCentre(F_PETIT, "touche pour rejouer", CENTRE, top + 238, GRIS);
+      } else {
+        texteCentre(F_TITRE, "Trop tôt !", CENTRE, top + 110, 0xFA6F);
+        texteCentre(F_TEXTE, "Attends que l'écran", CENTRE, top + 150, GRIS_CLAIR);
+        texteCentre(F_TEXTE, "soit vert", CENTRE, top + 174, GRIS_CLAIR);
+        texteCentre(F_PETIT, "touche pour réessayer", CENTRE, top + 220, GRIS);
       }
     } else if (carte->type == "pas") {
       float f = clampf(pasJour / (float)std::max(1, objectifPas), 0, 1);

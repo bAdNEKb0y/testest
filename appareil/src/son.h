@@ -19,4 +19,5 @@ namespace audio {
   float niveauRadio();
   String titreRadio();         // « Artiste - Titre » annoncé par la radio (vide si inconnu)
   float mesurerMicro(int ms);   // niveau du micro (0..1) pendant ms millisecondes, pour le mode test
+  float dbfsMicro(int ms);      // niveau du micro en dB pleine échelle (−90..0), pour le sonomètre
 }

@@ -62,7 +62,9 @@ namespace ui {
   extern String (*titreMusique)();              // titre du morceau annoncé par la radio (blind test)
   extern int recordTables;                      // meilleur score aux tables de multiplication
   void tables(int table);
-  extern int pasJour, objectifPas;              // compteur de pas du jour
+  extern int pasJour, objectifPas;
+  extern float bruitDb, bulleX, bulleY;          // sonomètre (dB estimés), niveau à bulle (inclinaison en g)
+  extern int recordReflexes;                    // meilleur temps de réaction (ms)              // compteur de pas du jour
   void sport();                                 // (re)démarre la séance de sport de la carte ouverte                       // lance le jeu des tables (0 = toutes)
   extern void (*surImage)(const String &id, const String &legende);  // toucher une photo : la voir en grand
   void photo(uint16_t *px466, const String &legende, bool plan = false, bool epingle = false);  // plein écran (466 x 466, prend possession)

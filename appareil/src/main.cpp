@@ -95,7 +95,13 @@ static volatile bool testSon = false;
 static void tacheTest(void *) {
   static const int gamme[] = {523, 659, 784, 1047};
   while (true) {
-    if (ui::typeCarte() == "test" && !cerveau::occupe()) {
+    String tc = ui::typeCarte();
+    if (tc == "bruit" && !cerveau::occupe()) {   // sonomètre : estimation (le micro n'est pas étalonné)
+      float db = audio::dbfsMicro(180) + 120 - (R.micro - 24);
+      ui::bruitDb = constrain(db, 25.f, 115.f);
+      continue;
+    }
+    if (tc == "test" && !cerveau::occupe()) {
       if (testSon) { testSon = false; audio::melodie(gamme, 4, 180); }
       else ui::niveauTest(audio::mesurerMicro(120));
     } else vTaskDelay(pdMS_TO_TICKS(300));
@@ -477,6 +483,7 @@ static void carteLocale(const String &quoi) {
   if (quoi.startsWith("tables")) { ui::tables(quoi.indexOf(':') > 0 ? quoi.substring(quoi.indexOf(':') + 1).toInt() : 0); carteJeu("tables"); }
   else if (quoi == "heure") carteHeure();
   else if (quoi == "pas") { sauverPas(false); carteJeu("pas"); }
+  else if (quoi == "bruit" || quoi == "niveau" || quoi == "reflexes") carteJeu(quoi == "bruit" ? "bruit" : quoi == "niveau" ? "niveau" : "reflexes");
   else if (quoi == "wifi_invite") {   // QR code fait ici : le mot de passe ne quitte jamais le boîtier
     Carte *c = new Carte();
     c->type = "code"; c->locale = true;
@@ -706,6 +713,7 @@ void setup() {
     else if (id == "encore_reveil") finReveil(true);
     else if (id == "stop_radio") { audio::radioStop(); ui::fermerCarte(); }
     else if (id == "test_son") testSon = true;
+    else if (id == "record_reflexes") { Preferences pr; pr.begin("jeux", false); pr.putInt("reflexes", ui::recordReflexes); pr.end(); }
     else if (id == "record_tables") { Preferences pr; pr.begin("jeux", false); pr.putInt("tables", ui::recordTables); pr.end(); }
     else if (id == "blindtest_encore") cerveau::question("Encore un blind test !");
     else if (id.startsWith("sport:")) cerveau::dire(id.substring(6) + " !");
@@ -744,7 +752,7 @@ void setup() {
     if (minutes <= 0 && R.ndd) { R.ndd = false; sauverReglages(); }   // « tu peux me déranger » coupe aussi la plage horaire
   };
   { Preferences pr; pr.begin("pas", true); ui::pasJour = pr.getInt("n", 0); pasJourNum = pr.getInt("j", -1); pasJourSauve = ui::pasJour; pr.end(); }
-  { Preferences pr; pr.begin("jeux", true); ui::recordTables = pr.getInt("tables", 0); pr.end(); }
+  { Preferences pr; pr.begin("jeux", true); ui::recordTables = pr.getInt("tables", 0); ui::recordReflexes = pr.getInt("reflexes", 0); pr.end(); }
   cerveau::surBlindTest = [](const String &url) {
     if (audio::radio(url)) { carteJeu("blindtest"); ui::humeur(H_CONTENT, 3000); }
     else ui::sousTitre("Cette radio ne veut pas démarrer, redemande-moi un blind test.", 4000);
@@ -906,6 +914,7 @@ void loop() {
     dernierCapteur = m;
     float ax, ay, az;
     if (imu.getAccelerometer(ax, ay, az)) {
+      ui::bulleX = ax; ui::bulleY = ay;
       float a = sqrtf(ax * ax + ay * ay + az * az);
       compterPas(a, m);
       if (fabsf(a - accPrec) > 0.9f && m - derniereSecousse > 4000 && !cerveau::occupe() && !nePasDeranger() && m - dernierPas > 2000) {
