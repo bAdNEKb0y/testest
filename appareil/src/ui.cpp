@@ -230,7 +230,7 @@ static void ciblesPour(Humeur h) {
 }
 
 // ------------------------------------------------------------------ cartes
-enum TypeElem : uint8_t { E_TEXTE, E_IMAGE, E_PILULE, E_BADGE, E_ICONE, E_SEP, E_QR, E_RANG, E_CASE, E_FLECHE, E_GRAPHE, E_BARRE };
+enum TypeElem : uint8_t { E_TEXTE, E_IMAGE, E_PILULE, E_BADGE, E_ICONE, E_SEP, E_QR, E_RANG, E_CASE, E_FLECHE, E_GRAPHE, E_BARRE, E_SEMAINE };
 struct Elem {
   TypeElem t;
   int x, y, w, h;
@@ -346,6 +346,7 @@ static void miseEnPage() {
         if (b.k == B_TITRE || b.k == B_IMAGE || b.k == B_METEO || b.k == B_CHOIX) p.hauteur += 12;
         else if (b.k == B_TEXTE && prec != B_SOUS) p.hauteur += 8;
         else if ((b.k == B_LIGNE || b.k == B_DEPART || b.k == B_JOUR || b.k == B_CASE || b.k == B_BARRE) && prec != b.k) p.hauteur += 12;
+        else if (b.k == B_SEMAINE) p.hauteur += 4;
         else if (b.k == B_REPONSE) p.hauteur += 16;
         else if (b.k == B_PETIT && prec == B_TITRE) p.hauteur += 10;
         else if (b.k == B_SOUS) p.hauteur += 6;
@@ -460,6 +461,13 @@ static void miseEnPage() {
           e.bloc = &b;
           p.elems.push_back(e);
           p.hauteur += 168;
+          break;
+        }
+        case B_SEMAINE: {  // habitude : 7 pastilles (lundi → dimanche), pleines quand c'est fait
+          Elem e{E_SEMAINE, COL_X + 14, p.hauteur, COL_W - 28, 50};
+          e.s = b.t; e.s2 = b.v; e.bloc = &b;
+          p.elems.push_back(e);
+          p.hauteur += 56;
           break;
         }
         case B_BARRE: {    // une ligne avec une barre proportionnelle (dépenses par catégorie…)
@@ -1098,6 +1106,19 @@ static void dessinerPage(int idx, int dx, int base) {
         }
         break;
       }
+      case E_SEMAINE: {
+        static const char *J[7] = {"L", "M", "M", "J", "V", "S", "D"};
+        texte(F_PETIT, e.bloc ? e.bloc->l : String(""), x, y + 12, GRIS_CLAIR);
+        texte(F_PETIT, e.s2, x + e.w - largeur(F_PETIT, e.s2), y + 12, accent);
+        int pas = e.w / 7;
+        for (int i = 0; i < 7; i++) {
+          int cx = x + pas / 2 + i * pas, cy = y + 36;
+          char v = i < (int)e.s.length() ? e.s[i] : '0';
+          if (v == '1') { g->fillCircle(cx, cy, 13, accent); texteCentre(F_PETIT, J[i], cx, cy + 5, NOIR); }
+          else { g->drawCircle(cx, cy, 13, v == '2' ? BLANC : 0x3186); texteCentre(F_PETIT, J[i], cx, cy + 5, v == '2' ? BLANC : GRIS); }
+        }
+        break;
+      }
       case E_BARRE: {
         texte(F_TEXTE, e.s, x, y + 18, BLANC);
         texte(F_FORT, e.s2, x + e.w - largeur(F_FORT, e.s2), y + 18, BLANC);
@@ -1125,10 +1146,11 @@ static void dessinerPage(int idx, int dx, int base) {
         g->fillRoundRect(x, y + 6, 28, 28, 8, fait ? accent : 0x10A2);
         if (!fait) g->drawRoundRect(x, y + 6, 28, 28, 8, attenue(accent, 0.8f));
         else for (int k = 0; k < 3; k++) { g->drawLine(x + 6, y + 19 + k, x + 12, y + 25 + k, NOIR); g->drawLine(x + 12, y + 25 + k, x + 22, y + 13 + k, NOIR); }
-        uint16_t ct = fait ? GRIS : BLANC;
+        bool habitude = carte && carte->type == "habitudes";
+        uint16_t ct = fait && !habitude ? GRIS : BLANC;
         texte(F_TEXTE, e.s, x + 42, y + 27, ct);
         if (e.s2.length()) texte(F_TEXTE, e.s2, x + 42, y + 52, ct);
-        if (fait) g->drawFastHLine(x + 40, y + 21, std::min(largeur(F_TEXTE, e.s) + 4, e.w - 40), GRIS);
+        if (fait && !habitude) g->drawFastHLine(x + 40, y + 21, std::min(largeur(F_TEXTE, e.s) + 4, e.w - 40), GRIS);
         break;
       }
     }
@@ -1571,6 +1593,11 @@ void ui::dessiner(uint32_t m) {
 
   // ce qu'il est en train de faire, écrit en clair
   if (!(carte && carteVisible) && sousTitreAlpha < 0.3f && veilleAlpha < 0.05f) {
+    if (ui::invite && act == A_REPOS) {   // badge discret : on sait que le mode invité est actif
+      int w = largeur(F_PETIT, "mode invité") + 36;
+      g->drawRoundRect(CENTRE - w / 2, 64, w, 24, 12, attenue(accent, 0.6f));
+      texteCentre(F_PETIT, "mode invité", CENTRE, 81, attenue(accent, 0.9f));
+    }
     if (act == A_ECOUTE) texteCentre(F_SOUS, "Je t'écoute...", CENTRE, 392, attenue(accent, 0.9f));
     else if (act == A_REFLECHIT)
       for (int k2 = 0; k2 < 3; k2++) {
