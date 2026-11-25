@@ -177,6 +177,7 @@ static time_t lireDate(const char *s) {  // AAAA-MM-JJTHH:MM:SS, heure de Paris
 }
 static bool estLaNuit();
 static bool nePasDeranger();
+static void sauverPas(bool forcer);
 // initiative : de temps en temps, il regarde s'il a quelque chose d'utile à te dire (rappel proche, pluie, tâche…)
 static void peutEtreProposer() {
   static uint32_t dernierEssai = 0;
