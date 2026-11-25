@@ -288,7 +288,7 @@ static void miseEnPage() {
       premier = false;
       prec = b.k;
       switch (b.k) {
-        case B_TITRE: ajouterTexte(p, carte->type == "reveil" ? F_HORLOGE : F_TITRE, b.t, BLANC, 4); break;
+        case B_TITRE: ajouterTexte(p, (carte->type == "reveil" || carte->type == "decompte") ? F_HORLOGE : F_TITRE, b.t, carte->type == "decompte" ? accent : BLANC, 4); break;
         case B_SOUS: ajouterTexte(p, F_SOUS, b.t, accent, 2); break;
         case B_TEXTE: ajouterTexte(p, b.fort ? F_FORT : F_TEXTE, b.t, b.fort ? BLANC : GRIS_CLAIR); break;
         case B_PETIT: ajouterTexte(p, F_PETIT, b.t, GRIS, 4); break;
