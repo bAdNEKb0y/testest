@@ -16,6 +16,9 @@ void (*surPlan)(const String &, const String &, bool, int) = nullptr;
 void (*surRadio)(const String &, const String &) = nullptr;
 void (*surBlindTest)(const String &) = nullptr;
 void (*surNePasDeranger)(int) = nullptr;
+void (*surInvite)(bool) = nullptr;
+void (*surPauses)(int, int) = nullptr;
+volatile bool modeInvite = false;
 void (*surStopRadio)() = nullptr;
 void (*surAlarmesChangees)() = nullptr;
 }
@@ -241,7 +244,8 @@ static void reflechir(const String &texte, uint32_t gen) {
   String titre = ui::titreCarte();
   if (titre.length()) req["fiche_ouverte"] = titre;
   if (jeuSecret.length()) req["jeu_secret"] = jeuSecret;
-  if (ui::pasJour > 0) req["pas"] = ui::pasJour;
+  if (ui::pasJour > 0 && !cerveau::modeInvite) req["pas"] = ui::pasJour;
+  if (cerveau::modeInvite) req["invite"] = true;
   if (ui::typeCarte() == "blindtest") req["blindtest"] = audio::titreRadio().length() ? audio::titreRadio() : String("(titre inconnu)");
   String corps;
   serializeJson(req, corps);
@@ -274,6 +278,8 @@ static void reflechir(const String &texte, uint32_t gen) {
     else if (type == "musique" && cerveau::surRadio) { radioApres = a["url"] | ""; radioNom = a["nom"] | "Radio"; blindTest = String(a["jeu"] | "") == "blindtest"; }
     else if (type == "stop_musique" && cerveau::surStopRadio) cerveau::surStopRadio();
     else if (type == "alarmes" && cerveau::surAlarmesChangees) cerveau::surAlarmesChangees();
+    else if (type == "invite" && cerveau::surInvite) cerveau::surInvite(a["actif"] | false);
+    else if (type == "pauses" && cerveau::surPauses) cerveau::surPauses(a["minutes"] | 0, a["heures"] | 3);
     else if (type == "ndd" && cerveau::surNePasDeranger) cerveau::surNePasDeranger(a["minutes"] | 0);
     else if (type == "sport") {   // séance guidée : une page par exercice, le boîtier la déroule tout seul
       Carte *c = new Carte();

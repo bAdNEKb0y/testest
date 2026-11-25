@@ -20,5 +20,8 @@ namespace cerveau {
   extern void (*surStopRadio)();
   extern void (*surBlindTest)(const String &url);
   extern void (*surNePasDeranger)(int minutes);   // 0 = désactiver
+  extern void (*surInvite)(bool actif);           // mode invité (se désactive par un appui long sur BOOT)
+  extern void (*surPauses)(int minutes, int heures);   // rappels de pause écran (0 = arrêter)
+  extern volatile bool modeInvite;
   extern void (*surAlarmesChangees)();
 }

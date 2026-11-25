@@ -185,7 +185,7 @@ static void peutEtreProposer() {
   uint32_t m = millis();
   if (dernierEssai && m - dernierEssai < 40 * 60000) return;
   time_t t = time(nullptr); struct tm tm; localtime_r(&t, &tm);
-  if (tm.tm_year < 120 || tm.tm_hour < 8 || tm.tm_hour >= 21 || estLaNuit() || nePasDeranger()) return;
+  if (tm.tm_year < 120 || tm.tm_hour < 8 || tm.tm_hour >= 21 || estLaNuit() || nePasDeranger() || cerveau::modeInvite) return;
   if (tm.tm_yday != jour) { jour = tm.tm_yday; nbAujourdhui = 0; }
   if (nbAujourdhui >= 8 || ecranEteint || cerveau::occupe()) return;
   uint32_t calme = m - derniereActivite;
@@ -578,6 +578,10 @@ static bool estLaNuit() {
   return R.nuitDebut > R.nuitFin ? (h >= R.nuitDebut || h < R.nuitFin) : (h >= R.nuitDebut && h < R.nuitFin);
 }
 
+// mode invité (le cerveau cache tes infos privées) et pauses écran
+static time_t inviteJusqua = 0;
+static uint32_t pauseIntervalle = 0, prochainePause = 0, finPauses = 0;
+static int numPause = 0;
 // ne pas déranger : plage horaire des réglages, ou « ne me dérange pas pendant 2 heures »
 static time_t nddJusqua = 0;
 static bool nePasDeranger() {
@@ -700,6 +704,17 @@ void setup() {
     envoyer(d);
   };
   ui::titreMusique = audio::titreRadio;
+  cerveau::surInvite = [](bool actif) {
+    cerveau::modeInvite = actif;
+    inviteJusqua = actif ? time(nullptr) + 4 * 3600 : 0;
+  };
+  cerveau::surPauses = [](int minutes, int heures) {
+    if (minutes <= 0) { pauseIntervalle = 0; return; }
+    pauseIntervalle = constrain(minutes, 10, 120) * 60000UL;
+    prochainePause = millis() + pauseIntervalle;
+    finPauses = millis() + constrain(heures, 1, 8) * 3600000UL;
+    numPause = 0;
+  };
   cerveau::surNePasDeranger = [](int minutes) {
     nddJusqua = minutes > 0 ? time(nullptr) + minutes * 60 : 0;
     if (minutes <= 0 && R.ndd) { R.ndd = false; sauverReglages(); }   // « tu peux me déranger » coupe aussi la plage horaire
@@ -832,7 +847,11 @@ void loop() {
     if (clicEnAttente && m - clicEnAttente < 380) { clicEnAttente = 0; bootLongFait = true; allumerEcran(); personnaliteSuivante(); }
     else { dernierBoot = m; bootLongFait = false; }
   }
-  if (boot && !bootLongFait && m - dernierBoot > 1500) { bootLongFait = true; clicEnAttente = 0; allumerEcran(); carteAppareil(); }
+  if (boot && !bootLongFait && m - dernierBoot > 1500) {
+    bootLongFait = true; clicEnAttente = 0; allumerEcran();
+    if (cerveau::modeInvite) { cerveau::modeInvite = false; inviteJusqua = 0; ui::humeur(H_CONTENT, 3000); ui::sousTitre("Mode invité terminé. Re-bonjour !", 3500); }
+    else carteAppareil();
+  }
   if (!boot && bootAvant && !bootLongFait && m - dernierBoot > 30) clicEnAttente = m;
   if (clicEnAttente && !boot && m - clicEnAttente >= 380) { clicEnAttente = 0; allumerEcran(); sonnerie = false; cerveau::parler(); }
   bootAvant = boot;
@@ -931,13 +950,37 @@ void loop() {
       }
     }
     if (repeterReveilA && (int32_t)(millis() - repeterReveilA) > 0 && !reveilActif) { repeterReveilA = 0; sonnerReveil(reveilNom); }
+    if (id.length() && texte.startsWith(">")) {   // rappel-commande : « >Montre ma liste avant de partir » est posé au cerveau
+      String *f = new String(id);
+      if (xQueueSend(fileRappelsFaits, &f, 0) != pdTRUE) delete f;
+      if (!nePasDeranger()) { allumerEcran(); cerveau::question(texte.substring(1)); }
+      id = "";
+    }
+    // fin du mode invité au bout de 4 h, et pauses écran
+    if (cerveau::modeInvite && inviteJusqua && maintenant > inviteJusqua) { cerveau::modeInvite = false; inviteJusqua = 0; }
+    if (pauseIntervalle && (int32_t)(millis() - finPauses) > 0) pauseIntervalle = 0;
+    if (pauseIntervalle && (int32_t)(millis() - prochainePause) > 0) {
+      prochainePause = millis() + pauseIntervalle;
+      if (!nePasDeranger()) {
+        static const char *idees[] = {"Regarde au loin pendant 20 secondes", "Lève-toi et étire-toi", "Bois un verre d'eau", "Fais 10 grandes respirations", "Marche un peu dans la pièce", "Ferme les yeux une minute"};
+        String idee = idees[numPause++ % 6];
+        allumerEcran();
+        Carte *c = new Carte();
+        c->type = "minuteur"; c->locale = true;
+        c->pages.push_back({bloc(B_SOUS, "Pause écran"), bloc(B_TITRE, idee), bloc(B_PETIT, "Touche l'écran quand c'est fait")});
+        ui::montrerCarte(c);
+        ui::humeur(H_CLIN, 4000);
+        audio::bip(880, 120, 0.2f);
+        cerveau::dire("C'est l'heure d'une petite pause ! " + idee + ".");
+      }
+    }
     if (id.length()) {
       allumerEcran();
       Carte *c = new Carte();
       c->type = "minuteur"; c->locale = true;
       c->pages.push_back({bloc(B_SOUS, "Rappel"), bloc(B_TITRE, texte), bloc(B_PETIT, "Touche l'écran pour arrêter")});
       ui::montrerCarte(c);
-      if (nePasDeranger()) ui::humeur(H_CLIN, 3000);   // en silence : juste la carte
+      if (nePasDeranger() || cerveau::modeInvite) ui::humeur(H_CLIN, 3000);   // en silence : juste la carte
       else {
         ui::humeur(H_SURPRIS, 5000);
         sonnerie = true;
