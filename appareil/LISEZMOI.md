@@ -20,14 +20,14 @@ Ensuite, les mises à jour se font **sans câble**, depuis la page de réglages,
 
 ## 3. Premier démarrage
 
-1. L'écran affiche un **QR code**. Scanne-le avec l'appareil photo du téléphone pour rejoindre le Wi-Fi « Nexxus-XXXX ».
+1. L'écran affiche un **QR code**. Scanne-le avec l'appareil photo du téléphone pour rejoindre le Wi-Fi « Komi-XXXX ».
 2. La page de réglages s'ouvre toute seule. Sinon, va sur `192.168.4.1`.
 3. Dans **Wi-Fi**, ajoute ta box **et** le partage de connexion de ton téléphone. Le boîtier prendra tout seul celui qui est disponible (seulement en 2,4 GHz).
 4. Une fois connecté, l'écran montre son adresse et un code à 6 chiffres.
 
 ## 4. Brancher le cerveau
 
-Ouvre **http://nexxus.local** (ou l'adresse affichée), avec l'identifiant `nexxus` et le code à 6 chiffres. Ensuite :
+Ouvre **http://komi.local** (ou l'adresse affichée), avec l'identifiant `komi` et le code à 6 chiffres. Ensuite :
 
 1. Dans « Adresse du relais », mets `https://nexxus.pm/relay.php` (ou le chemin réel de ton fichier).
 2. Dans « Code appareil », mets le même code que `$CODE_APPAREIL`.

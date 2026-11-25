@@ -28,7 +28,7 @@ int requete(const String &url, const char *methode, const char *typeContenu, con
   c.crt_bundle_attach = esp_crt_bundle_attach;
   c.buffer_size = 4096;
   c.buffer_size_tx = 2048;
-  c.user_agent = "Nexxus/1.0";
+  c.user_agent = "Komi/1.0";
   c.keep_alive_enable = false;
   c.method = strcmp(methode, "POST") == 0 ? HTTP_METHOD_POST : HTTP_METHOD_GET;
   esp_http_client_handle_t h = esp_http_client_init(&c);

@@ -6,7 +6,7 @@
 struct Reseau { String ssid, mdp; };
 
 struct Reglages {
-  String nom = "Nexxus";
+  String nom = "Komi";
   String prenom = "";
   String ville = "Paris";     // météo de l'écran de veille
   String serveur = "";        // ex. https://nexxus.pm/relay.php

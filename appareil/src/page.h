@@ -5,7 +5,7 @@
 static const char PAGE_REGLAGES[] PROGMEM = R"HTML(<!doctype html>
 <html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Nexxus</title>
+<title>Komi</title>
 <style>
 :root{--f:#07090d;--c:#11161e;--b:#1d2530;--t:#e8edf3;--g:#8b95a3;--a:#35e0ff;--r:#ff6b6b;--v:#4ade80}
 *{box-sizing:border-box}body{margin:0;background:var(--f);color:var(--t);font:15px/1.45 system-ui,-apple-system,sans-serif;padding:16px 16px 60px}
@@ -25,7 +25,7 @@ button.second{background:#1a222d;color:var(--t)}button.danger{background:#2a1416
 .note{color:var(--g);font-size:13px;margin:8px 0 0}#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1a222d;padding:10px 16px;border-radius:12px;opacity:0;transition:.3s}
 #toast.on{opacity:1}.tests div{padding:6px 0;border-top:1px solid var(--b)}progress{width:100%}
 </style></head><body><main>
-<h1><span class="yeux"><i></i><i></i></span><span id="titre">Nexxus</span></h1>
+<h1><span class="yeux"><i></i><i></i></span><span id="titre">Komi</span></h1>
 <p class="sous" id="sous">Réglages du boîtier</p>
 
 <section><h2>État</h2><div class="etat" id="etat"></div></section>
@@ -117,7 +117,7 @@ function post(u,b){return api(u,{method:'POST',headers:{'Content-Type':'applicat
 async function cmd(c){if(!c.trim())return;try{const r=await post('/api/commande',{c});toast(r.reponse||'OK')}catch(e){toast(e.message)}}
 let R={};
 function remplir(r){R=r;for(const k in r){const e=$(k);if(!e||k==='code')continue;if(e.type==='checkbox')e.checked=!!r[k];else e.value=r[k]}
- $('titre').textContent=r.nom||'Nexxus';$('code').placeholder=r.code_regle?'déjà réglé (laisser vide pour garder)':'colle ici le code de relay.php';
+ $('titre').textContent=r.nom||'Komi';$('code').placeholder=r.code_regle?'déjà réglé (laisser vide pour garder)':'colle ici le code de relay.php';
  $('reseaux').innerHTML='';(r.reseaux||[]).forEach(s=>{const d=document.createElement('div');d.className='res';const n=document.createElement('span');n.textContent=s;const b=document.createElement('button');b.className='danger';b.textContent='Oublier';b.onclick=()=>post('/api/wifi',{ssid:s,oublier:true}).then(remplir);d.append(n,b);$('reseaux').append(d)});
  ['debit','volume','micro','luminosite'].forEach(k=>{$('v'+k).textContent=$(k).value})}
 ['debit','volume','micro','luminosite'].forEach(k=>$(k).addEventListener('input',()=>$('v'+k).textContent=$(k).value));

@@ -43,9 +43,9 @@ static bool depuisAP() {
 }
 static bool autorise() {
   if (depuisAP()) return true;
-  if (serveur.authenticate("nexxus", R.pin.c_str())) return true;
+  if (serveur.authenticate("komi", R.pin.c_str())) return true;
   if (reseau::surCodeDemande) reseau::surCodeDemande();
-  serveur.requestAuthentication(BASIC_AUTH, "Nexxus", "Le code est affiche sur l'ecran du boitier");
+  serveur.requestAuthentication(BASIC_AUTH, "Komi", "Le code est affiche sur l'ecran du boitier");
   return false;
 }
 static void json(const String &s, int code = 200) {
@@ -176,7 +176,7 @@ static void routes() {
       static bool permis = false;
       HTTPUpload &u = serveur.upload();
       if (u.status == UPLOAD_FILE_START) {
-        permis = depuisAP() || serveur.authenticate("nexxus", R.pin.c_str());
+        permis = depuisAP() || serveur.authenticate("komi", R.pin.c_str());
         if (!permis) return;
         ui::sousTitre("Mise à jour en cours… ne m'éteins pas !", 120000);
         ui::humeur(H_SURPRIS);
@@ -203,7 +203,7 @@ static void ouvrirAP() {
   if (apActif) return;
   uint64_t mac = ESP.getEfuseMac();
   char nom[20];
-  snprintf(nom, sizeof nom, "Nexxus-%04X", (unsigned)((mac >> 32) & 0xFFFF));
+  snprintf(nom, sizeof nom, "Komi-%04X", (unsigned)((mac >> 32) & 0xFFFF));
   apNom = nom;
   if (!apMdp.length()) {
     const char *alpha = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -233,7 +233,7 @@ static void chargerReseaux() {
 
 static void tacheReseau(void *) {
   WiFi.persistent(false);
-  WiFi.setHostname("nexxus");
+  WiFi.setHostname("komi");
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(true);
   chargerReseaux();
@@ -257,7 +257,7 @@ static void tacheReseau(void *) {
       if (!connecteDepuis) {
         connecteDepuis = millis();
         Serial.printf("[wifi] connecté à %s, %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
-        if (!mdns) { mdns = MDNS.begin("nexxus"); if (mdns) MDNS.addService("http", "tcp", 80); }
+        if (!mdns) { mdns = MDNS.begin("komi"); if (mdns) MDNS.addService("http", "tcp", 80); }
         if (!heure) { configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "pool.ntp.org", "time.google.com"); heure = true; }
         if (apActif) apFermeA = millis() + 90000;  // laisse le temps de voir l'adresse sur le téléphone
         if (reseau::surReglagesChanges) reseau::surReglagesChanges();

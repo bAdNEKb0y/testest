@@ -610,6 +610,7 @@ void ui::humeur(Humeur h, uint32_t duree) {
 
 void ui::activite(Activite a) {
   VERROU;
+  if (a == A_ECOUTE || a == A_PARLE) grille = false;   // on parle : le visage revient devant
   if (a != act) actDebut = millis();
   act = a;
   ciblesPour(humeurActuelle);
@@ -632,6 +633,7 @@ static void nettoyerCarte(Carte *c) {
 void ui::montrerCarte(Carte *c) {
   VERROU;
   if (!c) return;
+  grille = false;   // une carte arrive : la grille d'applis s'efface
   nettoyerCarte(c);
   bool memeType = carte && carte->type == c->type && carteVisible;
   if (carte && carte != derniere) delete carte;
@@ -685,6 +687,7 @@ void ui::aube(bool on) { VERROU; if (on && !aubeOn) aubeDebut = millis(); aubeOn
 void ui::attenteImage() { VERROU; photoAttenteDepuis = millis(); }
 void ui::photo(uint16_t *px, const String &legende, bool plan, bool epingle) {
   VERROU;
+  grille = false;
   if (photoPx) free(photoPx);
   else if (plan) nbPlans++;
   photoPx = px;

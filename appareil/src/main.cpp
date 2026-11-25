@@ -344,8 +344,8 @@ static void carteAppareil() {
     std::vector<Bloc> p2;
     p2.push_back(bloc(B_SOUS, "Page de réglages"));
     p2.push_back(bloc(B_QR, url + "/"));
-    p2.push_back(bloc(B_TEXTE, reseau::connecte() ? "nexxus.local ou " + reseau::ip() : url));
-    p2.push_back(bloc(B_PETIT, "Identifiant : nexxus   Code : " + R.pin));
+    p2.push_back(bloc(B_TEXTE, reseau::connecte() ? "komi.local ou " + reseau::ip() : url));
+    p2.push_back(bloc(B_PETIT, "Identifiant : komi   Code : " + R.pin));
     c->pages.push_back(p2);
   }
   ui::montrerCarte(c);
@@ -375,7 +375,7 @@ static void carteConfig() {
 void montrerCode() {
   Carte *c = new Carte();
   c->type = "code"; c->locale = true;
-  c->pages.push_back({bloc(B_SOUS, "Code du boîtier"), bloc(B_TITRE, R.pin), bloc(B_TEXTE, "Pour la page de réglages (identifiant : nexxus) et le Bluetooth.")});
+  c->pages.push_back({bloc(B_SOUS, "Code du boîtier"), bloc(B_TITRE, R.pin), bloc(B_TEXTE, "Pour la page de réglages (identifiant : komi) et le Bluetooth.")});
   ui::montrerCarte(c);
   derniereActivite = millis();
 }
