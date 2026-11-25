@@ -27,6 +27,7 @@ struct Reglages {
   bool ndd = false;           // ne pas déranger (plage horaire) : ni proposition, ni sonnerie de rappel ; les réveils sonnent quand même
   int nddDebut = 12, nddFin = 14;
   int objectifPas = 6000;
+  String wifiInviteNom, wifiInviteMdp;   // Wi-Fi des invités : QR code fait par le boîtier (le mot de passe reste ici)
   bool ecole = false;         // mode école automatique en semaine : écran éteint, silence total
   int ecoleDebut = 8, ecoleFin = 17;
   bool ecoleMercrediMatin = true;   // le mercredi, seulement le matin

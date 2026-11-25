@@ -64,6 +64,7 @@ static String reglagesJson() {
   d["forme"] = R.forme; d["luminosite"] = R.luminosite; d["volume"] = R.volume; d["micro"] = R.micro; d["sens_toucher"] = R.sensToucher; d["veille"] = R.veille;
   d["nuit"] = R.nuit; d["nuit_debut"] = R.nuitDebut; d["nuit_fin"] = R.nuitFin; d["sous_titres"] = R.sousTitres;
   d["ndd"] = R.ndd; d["ndd_debut"] = R.nddDebut; d["ndd_fin"] = R.nddFin; d["objectif_pas"] = R.objectifPas;
+  d["wifi_invite_nom"] = R.wifiInviteNom; d["wifi_invite_regle"] = R.wifiInviteMdp.length() > 0;
   d["ecole"] = R.ecole; d["ecole_debut"] = R.ecoleDebut; d["ecole_fin"] = R.ecoleFin; d["ecole_mercredi"] = R.ecoleMercrediMatin;
   JsonArray rs = d["reseaux"].to<JsonArray>();
   for (auto &r : R.reseaux) rs.add(r.ssid);
@@ -101,6 +102,8 @@ static void routes() {
     if (!d["ndd"].isNull()) R.ndd = d["ndd"].as<bool>();
     if (!d["ndd_debut"].isNull()) R.nddDebut = constrain(d["ndd_debut"].as<int>(), 0, 23);
     if (!d["ndd_fin"].isNull()) R.nddFin = constrain(d["ndd_fin"].as<int>(), 0, 23);
+    if (!d["wifi_invite_nom"].isNull()) R.wifiInviteNom = d["wifi_invite_nom"].as<String>().substring(0, 32);
+    if (!d["wifi_invite_mdp"].isNull() && d["wifi_invite_mdp"].as<String>().length()) R.wifiInviteMdp = d["wifi_invite_mdp"].as<String>().substring(0, 63);
     if (!d["ecole"].isNull()) R.ecole = d["ecole"].as<bool>();
     if (!d["ecole_debut"].isNull()) R.ecoleDebut = constrain(d["ecole_debut"].as<int>(), 0, 23);
     if (!d["ecole_fin"].isNull()) R.ecoleFin = constrain(d["ecole_fin"].as<int>(), 0, 23);

@@ -94,6 +94,12 @@ button.second{background:#1a222d;color:var(--t)}button.danger{background:#2a1416
 <p style="margin-top:12px"><button onclick="ajouterWifi()">Ajouter</button></p>
 </section>
 
+<section><h2>Wi-Fi des invités</h2>
+<p class="note">Dis « montre le Wi-Fi invités » : il affiche un QR code que tes amis scannent pour se connecter. Le mot de passe reste dans le boîtier.</p>
+<label>Nom du réseau</label><input id="wifi_invite_nom" maxlength="32">
+<label>Mot de passe</label><input id="wifi_invite_mdp" type="password" maxlength="63" placeholder="(laisser vide pour garder l'actuel)">
+<p style="margin-top:14px"><button onclick="sauver(['wifi_invite_nom','wifi_invite_mdp']);$('wifi_invite_mdp').value=''">Enregistrer</button></p>
+</section>
 <section><h2>Mise à jour</h2>
 <p class="note" style="margin-top:0">Envoie le fichier <b>nexxus-maj.bin</b>. Il redémarre tout seul à la fin.</p>
 <input type="file" id="fichier" accept=".bin"><progress id="prog" value="0" max="100" hidden></progress>

@@ -477,6 +477,17 @@ static void carteLocale(const String &quoi) {
   if (quoi.startsWith("tables")) { ui::tables(quoi.indexOf(':') > 0 ? quoi.substring(quoi.indexOf(':') + 1).toInt() : 0); carteJeu("tables"); }
   else if (quoi == "heure") carteHeure();
   else if (quoi == "pas") { sauverPas(false); carteJeu("pas"); }
+  else if (quoi == "wifi_invite") {   // QR code fait ici : le mot de passe ne quitte jamais le boîtier
+    Carte *c = new Carte();
+    c->type = "code"; c->locale = true;
+    if (!R.wifiInviteNom.length()) c->pages.push_back({bloc(B_SOUS, "Wi-Fi des invités"), bloc(B_TITRE, "Pas encore réglé"), bloc(B_TEXTE, "Ajoute le nom et le mot de passe sur ma page de réglages (nexxus.local).")});
+    else {
+      String mdp = R.wifiInviteMdp, echappe;
+      for (char ch : mdp) { if (ch == '\\' || ch == ';' || ch == ',' || ch == ':' || ch == '"') echappe += '\\'; echappe += ch; }
+      c->pages.push_back({bloc(B_QR, "WIFI:T:" + String(mdp.length() ? "WPA" : "nopass") + ";S:" + R.wifiInviteNom + ";P:" + echappe + ";;"), bloc(B_TITRE, R.wifiInviteNom), bloc(B_PETIT, "Scanne avec l'appareil photo pour te connecter")});
+    }
+    ui::montrerCarte(c);
+  }
   else if (quoi == "lampe" || quoi == "chrono" || quoi == "respiration" || quoi == "test" || quoi == "dessin") carteOutil(quoi.c_str());
   else carteAppareil();
 }

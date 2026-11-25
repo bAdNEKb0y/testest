@@ -230,7 +230,7 @@ static void ciblesPour(Humeur h) {
 }
 
 // ------------------------------------------------------------------ cartes
-enum TypeElem : uint8_t { E_TEXTE, E_IMAGE, E_PILULE, E_BADGE, E_ICONE, E_SEP, E_QR, E_RANG, E_CASE, E_FLECHE, E_GRAPHE, E_BARRE, E_SEMAINE };
+enum TypeElem : uint8_t { E_TEXTE, E_IMAGE, E_PILULE, E_BADGE, E_ICONE, E_SEP, E_QR, E_RANG, E_CASE, E_FLECHE, E_GRAPHE, E_BARRE, E_SEMAINE, E_PENDU };
 struct Elem {
   TypeElem t;
   int x, y, w, h;
@@ -461,6 +461,13 @@ static void miseEnPage() {
           e.bloc = &b;
           p.elems.push_back(e);
           p.hauteur += 168;
+          break;
+        }
+        case B_PENDU: {   // la potence se dessine erreur après erreur (7 au maximum)
+          Elem e{E_PENDU, CENTRE - 60, p.hauteur, 120, 120};
+          e.code = b.n;
+          p.elems.push_back(e);
+          p.hauteur += 126;
           break;
         }
         case B_SEMAINE: {  // habitude : 7 pastilles (lundi → dimanche), pleines quand c'est fait
@@ -1104,6 +1111,20 @@ static void dessinerPage(int idx, int dx, int base) {
           texteCentre(F_PETIT, String(mx[i]) + "°", px(i), py(mx[i]) - 8, BLANC);
           texteCentre(F_PETIT, String(mn[i]) + "°", px(i), py(mn[i]) + 19, GRIS_CLAIR);
         }
+        break;
+      }
+      case E_PENDU: {
+        int n = e.code;
+        uint16_t c = n >= 7 ? 0xFA6F : GRIS_CLAIR;
+        auto trait = [&](int x1, int y1, int x2, int y2) { for (int k = -1; k <= 1; k++) { g->drawLine(x1 + k, y1, x2 + k, y2, c); g->drawLine(x1, y1 + k, x2, y2 + k, c); } };
+        trait(x + 10, y + 116, x + 70, y + 116);              // le sol, toujours là
+        if (n >= 1) trait(x + 30, y + 116, x + 30, y + 6);    // le poteau
+        if (n >= 2) trait(x + 30, y + 6, x + 88, y + 6);      // la poutre
+        if (n >= 3) trait(x + 88, y + 6, x + 88, y + 24);     // la corde
+        if (n >= 4) { g->drawCircle(x + 88, y + 34, 10, c); g->drawCircle(x + 88, y + 34, 11, c); }   // la tête
+        if (n >= 5) trait(x + 88, y + 45, x + 88, y + 78);    // le corps
+        if (n >= 6) { trait(x + 88, y + 54, x + 74, y + 68); trait(x + 88, y + 54, x + 102, y + 68); }   // les bras
+        if (n >= 7) { trait(x + 88, y + 78, x + 76, y + 100); trait(x + 88, y + 78, x + 100, y + 100); } // les jambes
         break;
       }
       case E_SEMAINE: {

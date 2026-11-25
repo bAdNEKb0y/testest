@@ -36,6 +36,8 @@ void chargerReglages() {
   R.nddFin = P.getInt("nddF", R.nddFin);
   R.objectifPas = P.getInt("objPas", R.objectifPas);
   R.ecole = P.getBool("ecole", R.ecole);
+  R.wifiInviteNom = P.getString("wiNom", "");
+  R.wifiInviteMdp = P.getString("wiMdp", "");
   R.ecoleDebut = P.getInt("ecoleD", R.ecoleDebut);
   R.ecoleFin = P.getInt("ecoleF", R.ecoleFin);
   R.ecoleMercrediMatin = P.getBool("ecoleMer", R.ecoleMercrediMatin);
@@ -78,6 +80,8 @@ void sauverReglages() {
   P.putInt("nddF", R.nddFin);
   P.putInt("objPas", R.objectifPas);
   P.putBool("ecole", R.ecole);
+  P.putString("wiNom", R.wifiInviteNom);
+  P.putString("wiMdp", R.wifiInviteMdp);
   P.putInt("ecoleD", R.ecoleDebut);
   P.putInt("ecoleF", R.ecoleFin);
   P.putBool("ecoleMer", R.ecoleMercrediMatin);
