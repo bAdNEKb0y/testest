@@ -247,6 +247,11 @@ static uint32_t photoAttenteDepuis = 0, photoDepuis = 0;
 static bool photoPlan = false, photoEpingle = false;
 static int photoY0 = 0;
 static int nbPlans = 0;
+// outils locaux : lampe, chronomètre, respiration
+static int lampeCouleur = 0;
+static bool chronoMarche = false;
+static uint32_t chronoDepart = 0, chronoCumul = 0;
+static uint32_t respDebut = 0;
 static bool musiqueOn = false, aubeOn = false;
 static uint32_t aubeDebut = 0;
 static float barres[48];
@@ -435,6 +440,7 @@ void ui::montrerCarte(Carte *c) {
   choixFait = "";
   if (!carteVisible) { carteVisible = true; if (!memeType) carteY = ECRAN; nbCartesVues++; }
   carteOuverteA = derniereAction = millis();
+  if (c->type == "respiration") respDebut = 0;
 }
 
 void ui::fermerCarte() {
@@ -444,6 +450,7 @@ void ui::fermerCarte() {
   derniereAction = millis();
 }
 bool ui::carteOuverte() { return carte && carteVisible; }
+String ui::typeCarte() { VERROU; return carte && carteVisible ? carte->type : String(""); }
 String ui::titreCarte() {
   VERROU;
   if (!carte || !carteVisible || carte->pages.empty()) return "";
@@ -502,6 +509,13 @@ static void tape(int x, int y) {
   if (!ui::carteOuverte()) { if (ui::surParler) ui::surParler(); return; }
   if (y < HAUT_CARTE) { if (ui::surParler) ui::surParler(); return; }
   if (carte->type == "minuteur") { ui::fermerCarte(); if (ui::surBouton) ui::surBouton("stop_alarme"); return; }
+  if (carte->type == "lampe") { lampeCouleur = (lampeCouleur + 1) % 5; return; }
+  if (carte->type == "chrono") {
+    if (y > 330 && !chronoMarche && chronoCumul) { chronoCumul = 0; return; }   // « remettre à zéro »
+    if (chronoMarche) { chronoCumul += millis() - chronoDepart; chronoMarche = false; }
+    else { chronoDepart = millis(); chronoMarche = true; }
+    return;
+  }
   if (page < (int)mise.size()) {
     int base = (int)carteY - (int)defil;
     for (auto &e : mise[page].elems) {
@@ -989,7 +1003,8 @@ void ui::dessiner(uint32_t m) {
   }
   // fermeture automatique quand on ne s'en sert plus
   if (carte && carteVisible && !appui && act != A_PARLE && act != A_ECOUTE && act != A_REFLECHIT) {
-    uint32_t delai = carte->type == "config" || carte->type == "minuteur" ? 0 : (carte->type == "heure" ? 25000 : 60000);
+    bool garde = carte->type == "config" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche);
+    uint32_t delai = garde ? 0 : (carte->type == "heure" ? 25000 : 60000);
     if (delai && m - derniereAction > delai) carteVisible = false;
   }
 
@@ -1064,6 +1079,36 @@ void ui::dessiner(uint32_t m) {
     g->fillRoundRect(CENTRE - 24, top + 9, 48, 5, 3, 0x4228);
     int base = top - (int)defil;
     if (carte->type == "heure") carteHeure(top);
+    else if (carte->type == "chrono") {
+      uint32_t ms = chronoCumul + (chronoMarche ? millis() - chronoDepart : 0);
+      char b[16];
+      snprintf(b, sizeof b, "%02u:%02u", (unsigned)(ms / 60000), (unsigned)(ms / 1000 % 60));
+      texteCentre(F_HORLOGE, b, CENTRE, top + 130, chronoMarche ? BLANC : GRIS_CLAIR);
+      snprintf(b, sizeof b, ",%02u", (unsigned)(ms / 10 % 100));
+      texteCentre(F_MOYEN, b, CENTRE, top + 180, accent);
+      if (chronoMarche) g->fillArc(CENTRE, CENTRE, R - 4, R - 9, -90, -90 + (ms % 60000) * 0.006f, attenue(accent, 0.6f));
+      texteCentre(F_SOUS, chronoMarche ? "touche pour mettre en pause" : (ms ? "touche pour reprendre" : "touche pour démarrer"), CENTRE, top + 222, GRIS);
+      if (!chronoMarche && ms) {
+        g->fillRoundRect(CENTRE - 100, 340, 200, 44, 22, 0x10A2);
+        g->drawRoundRect(CENTRE - 100, 340, 200, 44, 22, attenue(accent, 0.7f));
+        texteCentre(F_TEXTE, "Remettre à zéro", CENTRE, 369, BLANC);
+      }
+    } else if (carte->type == "respiration") {
+      // 4 s on inspire, 4 s on garde, 6 s on expire
+      if (!respDebut) respDebut = m;
+      float t = fmodf((m - respDebut) / 1000.f, 14.f);
+      float f; const char *mot;
+      if (t < 4) { f = t / 4; mot = "Inspire..."; }
+      else if (t < 8) { f = 1; mot = "Garde l'air"; }
+      else { f = 1 - (t - 8) / 6; mot = "Expire doucement"; }
+      float e = f * f * (3 - 2 * f);   // mouvement adouci
+      float rr = 40 + 95 * e;
+      int cyR = top + 160;
+      for (int k2 = 4; k2 >= 1; k2--) g->fillCircle(CENTRE, cyR, rr + k2 * 7, attenue(accent, 0.05f * (5 - k2)));
+      g->fillCircle(CENTRE, cyR, rr, attenue(accent, 0.35f + 0.25f * e));
+      texteCentre(F_TITRE, mot, CENTRE, cyR + 10, BLANC);
+      texteCentre(F_PETIT, String("cycle ") + (int)((m - respDebut) / 14000 + 1) + " · glisse vers le bas pour arrêter", CENTRE, top + 300, GRIS);
+    }
     else {
       int dx = (int)decalPage;
       dessinerPage(page, dx, base);
@@ -1182,6 +1227,25 @@ void ui::dessiner(uint32_t m) {
       texteCentre(F_SOUS, b, CENTRE, 440, GRIS_CLAIR);
     }
   }
+  // lampe : tout l'écran éclaire (blanc chaud, blanc, rouge de nuit, couleur des yeux, arc-en-ciel)
+  if (carte && carteVisible && carte->type == "lampe" && carteY < HAUT_CARTE + 40) {
+    uint16_t cl[] = {0xFF18, 0xFFFF, 0xC000, accent, 0};
+    uint16_t c = cl[lampeCouleur];
+    if (lampeCouleur == 4) {  // arc-en-ciel qui tourne doucement
+      float h = fmodf(m / 60.f, 360) / 60;
+      int i = (int)h; float f = h - i;
+      uint8_t q = 255 * (1 - f), u = 255 * f;
+      uint8_t rgbs[6][3] = {{255, u, 0}, {q, 255, 0}, {0, 255, u}, {0, q, 255}, {u, 0, 255}, {255, 0, q}};
+      c = rgb(rgbs[i % 6][0], rgbs[i % 6][1], rgbs[i % 6][2]);
+    }
+    if (fb) { for (int k2 = 0; k2 < ECRAN * ECRAN; k2++) fb[k2] = c; } else g->fillScreen(c);
+    if (m - carteOuverteA < 4000) {
+      uint16_t ct = lampeCouleur == 2 ? BLANC : NOIR;
+      texteCentre(F_SOUS, "touche : changer de couleur", CENTRE, 228, ct);
+      texteCentre(F_SOUS, "glisse vers le bas : éteindre", CENTRE, 254, ct);
+    }
+  }
+
   if (ui::batterieFaible && !(carte && carteVisible)) {
     g->drawRoundRect(CENTRE - 14, 22, 26, 13, 3, ROUGE);
     g->fillRect(CENTRE + 12, 26, 3, 5, ROUGE);

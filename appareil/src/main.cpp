@@ -360,8 +360,16 @@ static void carteRadio(const String &nom) {
   ui::montrerCarte(c);
 }
 
+static void carteOutil(const char *type) {
+  Carte *c = new Carte();
+  c->type = type; c->locale = true;
+  c->pages.push_back({bloc(B_TITRE, type)});
+  ui::montrerCarte(c);
+}
+
 static void carteLocale(const String &quoi) {
   if (quoi == "heure") carteHeure();
+  else if (quoi == "lampe" || quoi == "chrono" || quoi == "respiration") carteOutil(quoi.c_str());
   else carteAppareil();
 }
 
@@ -751,12 +759,15 @@ void loop() {
   if (actif) derniereActivite = m;
   uint32_t inactif = m - derniereActivite;
   int lum = R.luminosite;
+  bool lampe = ui::typeCarte() == "lampe";
+  if (lampe) derniereActivite = m;
   // veille : grande heure, météo et petits yeux, écran plus sombre
   bool enVeille = veilleForcee || (R.veille > 0 && inactif > (uint32_t)R.veille * 60000) || (nuit && inactif > 30000);
   if (enVeille != ui::enVeille() && !ui::carteOuverte()) ui::modeVeille(enVeille);
   if (nuit && inactif > 30000) lum = 10;
   else if (nuit) lum = std::min(R.luminosite, 60);
   else if (enVeille) lum = std::min(lum, 70);
+  if (lampe) lum = lampe && nuit ? 120 : 255;   // la lampe éclaire vraiment (un peu moins la nuit)
   // le jour, l'écran s'éteint 30 min après la veille ; la nuit, il reste une petite horloge
   bool eteindre = R.veille > 0 && inactif > (uint32_t)(R.veille + 30) * 60000 && !nuit;
   if (eteindre && !ecranEteint) { doitEteindre = true; ecranEteint = true; }

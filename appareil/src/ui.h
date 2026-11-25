@@ -47,6 +47,7 @@ namespace ui {
   void fermerCarte();
   bool carteOuverte();
   String titreCarte();                          // pour le suivi de conversation
+  String typeCarte();                           // type de la carte ouverte ("" si aucune)
   void attacherImage(uint32_t carteId, const String &imgId, uint16_t *px, int w, int h);
 
   // gestes (coordonnées écran)
