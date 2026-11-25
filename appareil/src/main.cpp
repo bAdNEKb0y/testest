@@ -414,6 +414,37 @@ static void carteOutil(const char *type) {
   ui::montrerCarte(c);
 }
 
+void appliquerReglages();
+// ------------------------------------------------------------------ personnalités (double-clic sur BOOT, ou page de réglages)
+struct Perso { const char *id, *nom, *phrase; uint32_t couleur; };
+static const Perso PERSOS[] = {
+  {"pote", "Le pote", "Salut ! Je redeviens moi-même, ton pote.", 0x35E0FF},
+  {"majordome", "Le majordome", "À votre service, Monsieur.", 0xF1F5F9},
+  {"sarcastique", "Le sarcastique", "Oh, génial. Encore un changement de personnalité.", 0xA78BFA},
+  {"prof", "Le prof", "Bien, on reprend la leçon. Qui a une question ?", 0x4ADE80},
+  {"coach", "Le coach sportif", "Allez, on se bouge ! Dix pompes et on en parle !", 0xFFA94D},
+  {"hacker", "Le hacker", "Accès autorisé. Système en ligne. Bienvenue dans la matrice.", 0x39FF6A},
+  {"zen", "Le zen", "Respire. Tout va bien. Je suis là.", 0x8EC5FF},
+  {"pirate", "Le pirate", "Mille sabords, moussaillon ! On lève l'ancre !", 0xFFD43B},
+};
+static void appliquerTheme() { ui::modeHacker(R.style == "hacker"); }
+static void personnaliteSuivante() {
+  int n = sizeof(PERSOS) / sizeof(PERSOS[0]), i = 0;
+  for (int k = 0; k < n; k++) if (R.style == PERSOS[k].id) i = k;
+  const Perso &p = PERSOS[(i + 1) % n];
+  R.style = p.id;
+  R.couleur = p.couleur;
+  sauverReglages();
+  appliquerReglages();
+  Carte *c = new Carte();
+  c->type = "perso"; c->locale = true;
+  c->pages.push_back({bloc(B_SOUS, "Personnalité"), bloc(B_TITRE, p.nom), bloc(B_PETIT, "double-clic sur BOOT pour la suivante")});
+  ui::montrerCarte(c);
+  ui::humeur(H_SURPRIS, 1500);
+  if (R.serveur.length() && R.code.length()) cerveau::dire(p.phrase);
+  else ui::sousTitre(p.phrase, 3000);
+}
+
 static void carteLocale(const String &quoi) {
   if (quoi == "heure") carteHeure();
   else if (quoi == "lampe" || quoi == "chrono" || quoi == "respiration" || quoi == "test" || quoi == "dessin") carteOutil(quoi.c_str());
@@ -421,7 +452,9 @@ static void carteLocale(const String &quoi) {
 }
 
 // ------------------------------------------------------------------ réglages appliqués
+static void appliquerTheme();
 void appliquerReglages() {
+  appliquerTheme();
   ui::couleurYeux(couleur565(R.couleur));
   ui::formeYeux(R.forme);
   audio::volume(R.volume);
@@ -694,13 +727,17 @@ void loop() {
   if (!presse) appuiAvaleEnCours = false;
   if (presse) derniereActivite = m;
 
-  // --- bouton BOOT : parler
-  // --- bouton BOOT : appui court = parler, appui long (1,5 s) = mes infos
+  // --- bouton BOOT : clic = parler, double-clic = changer de personnalité, appui long (1,5 s) = mes infos
   static bool bootLongFait = false;
+  static uint32_t clicEnAttente = 0;
   bool boot = digitalRead(BOUTON_BOOT) == LOW;
-  if (boot && !bootAvant) { dernierBoot = m; bootLongFait = false; }
-  if (boot && !bootLongFait && m - dernierBoot > 1500) { bootLongFait = true; allumerEcran(); carteAppareil(); }
-  if (!boot && bootAvant && !bootLongFait && m - dernierBoot > 30) { allumerEcran(); sonnerie = false; cerveau::parler(); }
+  if (boot && !bootAvant) {
+    if (clicEnAttente && m - clicEnAttente < 380) { clicEnAttente = 0; bootLongFait = true; allumerEcran(); personnaliteSuivante(); }
+    else { dernierBoot = m; bootLongFait = false; }
+  }
+  if (boot && !bootLongFait && m - dernierBoot > 1500) { bootLongFait = true; clicEnAttente = 0; allumerEcran(); carteAppareil(); }
+  if (!boot && bootAvant && !bootLongFait && m - dernierBoot > 30) clicEnAttente = m;
+  if (clicEnAttente && !boot && m - clicEnAttente >= 380) { clicEnAttente = 0; allumerEcran(); sonnerie = false; cerveau::parler(); }
   bootAvant = boot;
 
   // --- bouton PWR : appui court = veille / réveil (appui long 6 s = éteindre, géré par la puce d'alimentation)

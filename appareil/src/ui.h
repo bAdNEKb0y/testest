@@ -62,6 +62,7 @@ namespace ui {
   extern void (*surZoom)(int sens);             // carte : glisser vers le haut = zoomer, vers le bas = dézoomer
   void attenteImage();
   void musique(bool on);
+  void modeHacker(bool on);                     // personnalité hacker : pluie de code façon Matrix autour du visage
   void niveauTest(float micro);                 // mode test : niveau du micro mesuré                        // radio : égaliseur autour de l'écran
   void aube(bool on);                           // réveil : le fond s'éclaire comme un lever de soleil                          // petit anneau qui tourne pendant un chargement
   extern uint16_t *(*tampon)();                 // image en cours de dessin (pour l'effacer plus vite)
