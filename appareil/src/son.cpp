@@ -131,6 +131,19 @@ void audio::radioStop() {
   xSemaphoreGiveRecursive(verrouI2S);
 }
 bool audio::radioActive() { return radioOn; }
+float audio::mesurerMicro(int ms) {
+  radioStop();
+  xSemaphoreTakeRecursive(verrouI2S, portMAX_DELAY);
+  static int16_t brut[320 * 2];
+  double e = 0; int n = 0;
+  uint32_t t0 = millis();
+  while ((int)(millis() - t0) < ms) {
+    size_t lu = i2s.readBytes((char *)brut, sizeof brut);
+    for (size_t j = 0; j + 1 < lu / 2; j += 2) { int32_t s = std::max(abs(brut[j]), abs(brut[j + 1])) * 2; e += (double)s * s; n++; }
+  }
+  xSemaphoreGiveRecursive(verrouI2S);
+  return n ? std::min(1.0, sqrt(e / n) / 4000.0) : 0;
+}
 float audio::niveauRadio() { return radioOn && lecteur && lecteur->isRunning() ? 1.f : 0.f; }
 
 bool audio::demarrer() {

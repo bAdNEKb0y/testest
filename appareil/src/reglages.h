@@ -19,6 +19,7 @@ struct Reglages {
   int luminosite = 200;       // 10..255
   int volume = 70;            // 0..100
   int micro = 30;             // gain des micros en dB (18..37)
+  int sensToucher = 0;        // 0 normal, 1 gauche/droite inversé, 2 haut/bas inversé, 3 les deux
   int veille = 5;             // minutes avant d'assombrir l'écran (0 = jamais)
   int nuitDebut = 22, nuitFin = 7;
   bool nuit = true;           // mode nuit (visage endormi, écran sombre)

@@ -252,6 +252,8 @@ static int lampeCouleur = 0;
 static bool chronoMarche = false;
 static uint32_t chronoDepart = 0, chronoCumul = 0;
 static uint32_t respDebut = 0;
+static float testMicro = 0, testMicroMax = 0;
+static int testX = -1, testY = -1;
 static bool musiqueOn = false, aubeOn = false;
 static uint32_t aubeDebut = 0;
 static float barres[48];
@@ -471,6 +473,7 @@ void ui::attacherImage(uint32_t id, const String &imgId, uint16_t *px, int w, in
 }
 
 void ui::musique(bool on) { musiqueOn = on; }
+void ui::niveauTest(float v) { testMicro = v; testMicroMax = std::max(testMicroMax * 0.995f, v); }
 void ui::aube(bool on) { VERROU; if (on && !aubeOn) aubeDebut = millis(); aubeOn = on; }
 void ui::attenteImage() { VERROU; photoAttenteDepuis = millis(); }
 void ui::photo(uint16_t *px, const String &legende, bool plan, bool epingle) {
@@ -510,6 +513,11 @@ static void tape(int x, int y) {
   if (y < HAUT_CARTE) { if (ui::surParler) ui::surParler(); return; }
   if (carte->type == "minuteur") { ui::fermerCarte(); if (ui::surBouton) ui::surBouton("stop_alarme"); return; }
   if (carte->type == "lampe") { lampeCouleur = (lampeCouleur + 1) % 5; return; }
+  if (carte->type == "test") {
+    testX = x; testY = y;
+    if (y > 348 && ui::surBouton) ui::surBouton("test_son");
+    return;
+  }
   if (carte->type == "chrono") {
     if (y > 330 && !chronoMarche && chronoCumul) { chronoCumul = 0; return; }   // « remettre à zéro »
     if (chronoMarche) { chronoCumul += millis() - chronoDepart; chronoMarche = false; }
@@ -1003,7 +1011,7 @@ void ui::dessiner(uint32_t m) {
   }
   // fermeture automatique quand on ne s'en sert plus
   if (carte && carteVisible && !appui && act != A_PARLE && act != A_ECOUTE && act != A_REFLECHIT) {
-    bool garde = carte->type == "config" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche);
+    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche);
     uint32_t delai = garde ? 0 : (carte->type == "heure" ? 25000 : 60000);
     if (delai && m - derniereAction > delai) carteVisible = false;
   }
@@ -1093,6 +1101,20 @@ void ui::dessiner(uint32_t m) {
         g->drawRoundRect(CENTRE - 100, 340, 200, 44, 22, attenue(accent, 0.7f));
         texteCentre(F_TEXTE, "Remettre à zéro", CENTRE, 369, BLANC);
       }
+    } else if (carte->type == "test") {
+      texteCentre(F_TITRE, "Mode test", CENTRE, top + 48, BLANC);
+      texteCentre(F_PETIT, "touche les 4 points, parle, puis teste le son", CENTRE, top + 70, GRIS);
+      // 4 cibles : si le rond apparaît ailleurs que sous ton doigt, le toucher est inversé
+      const int cx4[4] = {CENTRE, CENTRE + 110, CENTRE, CENTRE - 110}, cy4[4] = {top + 96, top + 140, top + 184, top + 140};
+      for (int i = 0; i < 4; i++) { g->drawCircle(cx4[i], cy4[i], 14, GRIS); g->fillCircle(cx4[i], cy4[i], 3, GRIS); }
+      if (testX >= 0) { g->fillCircle(testX, testY, 12, attenue(accent, 0.8f)); g->drawCircle(testX, testY, 20, accent); }
+      texte(F_PETIT, "micro", CENTRE - 116, top + 226, GRIS);
+      g->fillRoundRect(CENTRE - 70, top + 216, 170, 12, 6, 0x2124);
+      g->fillRoundRect(CENTRE - 70, top + 216, (int)(170 * clampf(testMicro, 0.03f, 1)), 12, 6, testMicro > 0.15f ? 0x4F50 : accent);
+      g->drawFastVLine(CENTRE - 70 + (int)(170 * clampf(testMicroMax, 0, 1)), top + 212, 20, BLANC);
+      g->fillRoundRect(CENTRE - 90, 352, 180, 40, 20, 0x10A2);
+      g->drawRoundRect(CENTRE - 90, 352, 180, 40, 20, attenue(accent, 0.7f));
+      texteCentre(F_TEXTE, "Tester le son", CENTRE, 379, BLANC);
     } else if (carte->type == "respiration") {
       // 4 s on inspire, 4 s on garde, 6 s on expire
       if (!respDebut) respDebut = m;

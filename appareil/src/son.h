@@ -17,4 +17,5 @@ namespace audio {
   void radioStop();
   bool radioActive();
   float niveauRadio();
+  float mesurerMicro(int ms);   // niveau du micro (0..1) pendant ms millisecondes, pour le mode test
 }

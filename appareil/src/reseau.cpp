@@ -61,7 +61,7 @@ static String reglagesJson() {
   d["nom"] = R.nom; d["prenom"] = R.prenom; d["ville"] = R.ville; d["serveur"] = R.serveur; d["code_regle"] = R.code.length() > 0;
   d["style"] = R.style; d["voix"] = R.voix; d["debit"] = R.debit;
   char c[8]; snprintf(c, sizeof c, "#%06X", (unsigned)R.couleur); d["couleur"] = c;
-  d["forme"] = R.forme; d["luminosite"] = R.luminosite; d["volume"] = R.volume; d["micro"] = R.micro; d["veille"] = R.veille;
+  d["forme"] = R.forme; d["luminosite"] = R.luminosite; d["volume"] = R.volume; d["micro"] = R.micro; d["sens_toucher"] = R.sensToucher; d["veille"] = R.veille;
   d["nuit"] = R.nuit; d["nuit_debut"] = R.nuitDebut; d["nuit_fin"] = R.nuitFin; d["sous_titres"] = R.sousTitres;
   JsonArray rs = d["reseaux"].to<JsonArray>();
   for (auto &r : R.reseaux) rs.add(r.ssid);
@@ -93,6 +93,7 @@ static void routes() {
     if (!d["luminosite"].isNull()) R.luminosite = constrain(d["luminosite"].as<int>(), 10, 255);
     if (!d["volume"].isNull()) R.volume = constrain(d["volume"].as<int>(), 0, 100);
     if (!d["micro"].isNull()) R.micro = constrain(d["micro"].as<int>(), 12, 37);
+    if (!d["sens_toucher"].isNull()) R.sensToucher = constrain(d["sens_toucher"].as<int>(), 0, 3);
     if (!d["veille"].isNull()) R.veille = constrain(d["veille"].as<int>(), 0, 120);
     if (!d["nuit"].isNull()) R.nuit = d["nuit"].as<bool>();
     if (!d["nuit_debut"].isNull()) R.nuitDebut = constrain(d["nuit_debut"].as<int>(), 0, 23);

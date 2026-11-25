@@ -71,6 +71,12 @@ button.second{background:#1a222d;color:var(--t)}button.danger{background:#2a1416
 <p style="margin-top:14px"><button onclick="sauver(['forme','couleur','luminosite','veille','nuit','nuit_debut','nuit_fin','sous_titres'])">Enregistrer</button></p>
 </section>
 
+<section><h2>Premier essai</h2>
+<p class="note" style="margin-top:0">Le mode test affiche 4 cibles, le niveau du micro et un bouton pour le son. Si le rond n'apparaît pas sous ton doigt, change le sens du toucher.</p>
+<p class="ligne"><button class="second" onclick="cmd('test')">Mode test sur l'écran</button><button class="second" onclick="cmd('fermer')">Fermer</button></p>
+<label>Sens du toucher</label><select id="sens_toucher" onchange="sauver(['sens_toucher'])"><option value="0">Normal</option><option value="1">Gauche/droite inversé</option><option value="2">Haut/bas inversé</option><option value="3">Les deux inversés</option></select>
+</section>
+
 <section><h2>Wi-Fi</h2>
 <p class="note" style="margin-top:0">Il se connecte tout seul au premier réseau connu disponible. Ajoute ta box et le partage de connexion de ton téléphone.</p>
 <div id="reseaux"></div>

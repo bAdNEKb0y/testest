@@ -86,6 +86,16 @@ static void annulerMinuteurs() {
   xSemaphoreGive(verrouMin);
   sonnerie = false;
 }
+static volatile bool testSon = false;
+static void tacheTest(void *) {
+  static const int gamme[] = {523, 659, 784, 1047};
+  while (true) {
+    if (ui::typeCarte() == "test" && !cerveau::occupe()) {
+      if (testSon) { testSon = false; audio::melodie(gamme, 4, 180); }
+      else ui::niveauTest(audio::mesurerMicro(120));
+    } else vTaskDelay(pdMS_TO_TICKS(300));
+  }
+}
 static void tacheSonnerie(void *) {
   static const int notes[] = {1319, 0, 1319, 0, 1568, 0, 0, 0};
   while (true) {
@@ -406,7 +416,7 @@ static void carteOutil(const char *type) {
 
 static void carteLocale(const String &quoi) {
   if (quoi == "heure") carteHeure();
-  else if (quoi == "lampe" || quoi == "chrono" || quoi == "respiration") carteOutil(quoi.c_str());
+  else if (quoi == "lampe" || quoi == "chrono" || quoi == "respiration" || quoi == "test") carteOutil(quoi.c_str());
   else carteAppareil();
 }
 
@@ -469,6 +479,8 @@ String executerCommande(const String &brute) {
   }
   if (bas.startsWith("carte ")) { carteLocale(apres(6)); return "Carte affichée."; }
   if (bas == "fermer") { ui::fermerCarte(); return "Fermé."; }
+  if (bas == "test" || bas == "mode test") { carteOutil("test"); return "Mode test affiché sur l'écran."; }
+  if (bas.startsWith("toucher ")) { R.sensToucher = constrain(apres(8).toInt(), 0, 3); sauverReglages(); return "Sens du toucher : " + String(R.sensToucher) + "."; }
   if (bas == "tais-toi" || bas == "stop" || bas == "silence") { cerveau::taire(); sonnerie = false; return "Chut."; }
   if (bas.startsWith("wifi ")) {
     String r = apres(5);
@@ -566,6 +578,7 @@ void setup() {
     else if (id == "stop_reveil") finReveil(false);
     else if (id == "encore_reveil") finReveil(true);
     else if (id == "stop_radio") { audio::radioStop(); ui::fermerCarte(); }
+    else if (id == "test_son") testSon = true;
   };
   cerveau::surRadio = [](const String &url, const String &nom) {
     if (audio::radio(url)) { carteRadio(nom); ui::humeur(H_CONTENT, 4000); }
@@ -607,6 +620,7 @@ void setup() {
   reseau::demarrer();
   ble::demarrer(R.nom);
   xTaskCreatePinnedToCore(tacheSonnerie, "sonnerie", 4096, nullptr, 1, nullptr, 0);
+  xTaskCreatePinnedToCore(tacheTest, "test", 4096, nullptr, 1, nullptr, 0);
   xTaskCreatePinnedToCore(tacheMeteo, "meteo", 8192, nullptr, 1, nullptr, 0);
   verrouRappels = xSemaphoreCreateMutex();
   { Preferences pr; pr.begin("alarmes", true); chargerAlarmes(pr.getString("l", "[]")); pr.end(); }
@@ -664,6 +678,10 @@ void loop() {
   int16_t tx[2], ty[2];
   bool presse = false;
   if (tactileOk) presse = tactile.getPoint(tx, ty, 1) > 0;
+  if (presse) {  // sens du toucher réglable (si l'écran et le toucher ne sont pas dans le même sens)
+    if (R.sensToucher & 1) tx[0] = ECRAN - 1 - tx[0];
+    if (R.sensToucher & 2) ty[0] = ECRAN - 1 - ty[0];
+  }
   if (presse && !appuiEnCours) {
     appuiEnCours = true;
     // le premier toucher sur un écran éteint ou endormi sert juste à le réveiller

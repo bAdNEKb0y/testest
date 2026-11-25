@@ -24,6 +24,7 @@ void chargerReglages() {
   R.luminosite = P.getInt("lum", R.luminosite);
   R.volume = P.getInt("volume", R.volume);
   R.micro = P.getInt("micro", R.micro);
+  R.sensToucher = P.getInt("sensT", R.sensToucher);
   R.veille = P.getInt("veille", R.veille);
   R.nuitDebut = P.getInt("nuitD", R.nuitDebut);
   R.nuitFin = P.getInt("nuitF", R.nuitFin);
@@ -57,6 +58,7 @@ void sauverReglages() {
   P.putInt("lum", R.luminosite);
   P.putInt("volume", R.volume);
   P.putInt("micro", R.micro);
+  P.putInt("sensT", R.sensToucher);
   P.putInt("veille", R.veille);
   P.putInt("nuitD", R.nuitDebut);
   P.putInt("nuitF", R.nuitFin);
