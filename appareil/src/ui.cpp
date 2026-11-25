@@ -293,6 +293,34 @@ static int nbCartesVues = 0, nbFermetures = 0;
 static uint32_t astuceRouvrirFin = 0;
 static String choixFait;
 static uint16_t *photoPx = nullptr;
+// ------------------------------------------------------------------ grille d'applis (façon montre) : icônes rondes en nid d'abeille, plus grosses au centre
+struct App { const char *id, *nom; uint16_t c; const char *phrase; };   // phrase vide = appli du boîtier (sans Internet)
+static const App APPS[] = {
+  {"heure", "Heure", 0x2124, ""}, {"meteo", "Météo", 0x3D7F, "Quel temps fait-il aujourd'hui ?"}, {"minuteur", "Minuteur", 0xFC60, "Lance un minuteur"},
+  {"chrono", "Chrono", 0xFD20, ""}, {"reveils", "Réveils", 0xF9C8, "Montre mes réveils"}, {"taches", "À faire", 0x4F50, "Montre ma liste de choses à faire"},
+  {"agenda", "Agenda", 0xFA6F, "Montre mon agenda"}, {"radio", "Radio", 0xA45F, "Mets la radio"}, {"musique", "Musique", 0x1EEA, "Mets de la musique sur Spotify"},
+  {"lampe", "Lampe", 0xFEA0, ""}, {"respiration", "Respirer", 0x5DDF, ""}, {"pas", "Pas", 0x07FF, ""},
+  {"sport", "Sport", 0xFB08, "Lance une séance de sport de 10 minutes"}, {"dessin", "Dessin", 0xF81F, ""}, {"tables", "Tables", 0x47E8, ""},
+  {"reflexes", "Réflexes", 0xFFE0, ""}, {"quiz", "Quiz", 0x8A7F, "Fais-moi un quiz"}, {"blindtest", "Blind test", 0xE8EC, "Lance un blind test"},
+  {"bruit", "Bruit", 0x6B4D, ""}, {"niveau", "Niveau", 0x2E8A, ""}, {"actu", "Actu", 0xC618, "Quoi de neuf aujourd'hui ?"},
+  {"traduire", "Traduire", 0x34DF, "Je veux traduire une phrase"}, {"plan", "Plan", 0x2D6B, "Montre-moi la carte autour de moi"}, {"habitudes", "Habitudes", 0x07EF, "Montre mes habitudes"},
+  {"defi", "Défi", 0xFCC0, "C'est quoi le défi du jour ?"}, {"des", "Dés", 0xF2A0, "Lance un dé"}, {"wifi_invite", "Wi-Fi", 0x435C, ""}, {"appareil", "Réglages", 0x52AA, ""},
+};
+static const int NB_APPS = sizeof(APPS) / sizeof(APPS[0]);
+static bool grille = false;
+static float grilleDefil = 0, grilleVit = 0, grilleDepart = 0, grilleAlpha = 0;
+static uint32_t grilleAction = 0;
+static int grilleProche = 0;
+static void posApp(int i, float &x, float &y, float &s) {   // position et taille à l'écran (effet loupe)
+  int paire = i / 7, reste = i % 7, rang = paire * 2 + (reste < 4 ? 0 : 1), col = reste < 4 ? reste : reste - 4, n = reste < 4 ? 4 : 3;
+  float px = CENTRE + (col - (n - 1) / 2.f) * 100, py = 120 + rang * 86 - grilleDefil;
+  float dx = px - CENTRE, dy = py - CENTRE, d = sqrtf(dx * dx + dy * dy);
+  s = 1.0f - clampf((d - 70) / 180.f, 0, 1) * 0.7f;
+  float k = 0.78f + 0.22f * s;
+  x = CENTRE + dx * k; y = CENTRE + dy * k;
+}
+static float grilleMax() { int rangs = (NB_APPS + 6) / 7 * 2; return std::max(0, (rangs - 1) * 86 - 226); }
+static void ouvrirGrille() { grille = true; grilleDefil = 0; grilleVit = 0; grilleAction = millis(); }
 static String photoTxt;
 static uint32_t photoAttenteDepuis = 0, photoDepuis = 0;
 static bool photoPlan = false, photoEpingle = false;
@@ -798,6 +826,35 @@ void ui::toucher(int x, int y, bool presse, uint32_t t) {
     crayonX = x; crayonY = y;
     return;
   }
+  if (grille) {   // grille d'applis : glisser = défiler, toucher = ouvrir, glisser à droite = retour au visage
+    grilleAction = millis();
+    if (presse && !appui) { appui = true; deplace = false; xDeb = xp = x; yDeb = yp = y; tp = t; grilleDepart = grilleDefil; grilleVit = 0; return; }
+    if (presse) {
+      float dtt = std::max<int>(1, t - tp);
+      grilleVit = grilleVit * 0.5f - 0.5f * (y - yp) / dtt * 16;
+      xp = x; yp = y; tp = t;
+      if (abs(x - xDeb) + abs(y - yDeb) > 12) deplace = true;
+      if (deplace && abs(y - yDeb) > abs(x - xDeb)) grilleDefil = clampf(grilleDepart - (y - yDeb), 0, grilleMax());
+      return;
+    }
+    if (appui) {
+      appui = false;
+      int dx = xp - xDeb, dy = yp - yDeb;
+      if (deplace && dx > 70 && abs(dx) > abs(dy)) { grille = false; grilleVit = 0; return; }
+      if (deplace) return;
+      grilleVit = 0;
+      for (int i = 0; i < NB_APPS; i++) {
+        float ax, ay, s; posApp(i, ax, ay, s);
+        float r = 38 * s + 4;
+        if ((x - ax) * (x - ax) + (y - ay) * (y - ay) <= r * r || (xDeb - ax) * (xDeb - ax) + (yDeb - ay) * (yDeb - ay) <= r * r) {
+          grille = false;
+          if (ui::surBouton) ui::surBouton(String(APPS[i].phrase[0] ? "appq:" : "appl:") + (APPS[i].phrase[0] ? APPS[i].phrase : APPS[i].id));
+          return;
+        }
+      }
+    }
+    return;
+  }
   if (photoPx) {  // photo ou carte en grand : un toucher la referme, glisser haut/bas zoome une carte
     if (presse && !appui) { appui = true; photoY0 = y; yp = y; }
     if (presse) yp = y;
@@ -862,6 +919,8 @@ void ui::toucher(int x, int y, bool presse, uint32_t t) {
         if ((dx < -70 || vx < -0.5f) && page < n - 1) { page++; decalPage += ECRAN; defil = 0; }
         else if ((dx > 70 || vx > 0.5f) && page > 0) { page--; decalPage -= ECRAN; defil = 0; }
       }
+    } else if (!carte && abs(dx) > 70 && abs(dx) > abs(dy)) {
+      ouvrirGrille();   // glisser sur le visage : les applis
     } else if (dy < -70 && derniere && !carte) {
       // glisser vers le haut : revoir la dernière carte
       carte = derniere; derniere = nullptr;
@@ -1306,6 +1365,62 @@ static uint32_t derniereImage = 0;
 static bool bougeEncore = true;
 bool ui::aBouge() { return bougeEncore; }
 
+
+// petites icônes dessinées (blanc sur la pastille de couleur), à l'échelle r
+static void iconeApp(const char *id, int cx, int cy, float r) {
+  float k = r / 38.f;
+  auto L = [&](float x1, float y1, float x2, float y2, int ep = 3) { int e = std::max(1, (int)(ep * k)); for (int a = -e / 2; a <= e / 2; a++) { g->drawLine(cx + x1 * k + a, cy + y1 * k, cx + x2 * k + a, cy + y2 * k, BLANC); g->drawLine(cx + x1 * k, cy + y1 * k + a, cx + x2 * k, cy + y2 * k + a, BLANC); } };
+  auto C = [&](float x, float y, float rr, bool plein = false) { if (plein) g->fillCircle(cx + x * k, cy + y * k, std::max(1.f, rr * k), BLANC); else { g->drawCircle(cx + x * k, cy + y * k, rr * k, BLANC); g->drawCircle(cx + x * k, cy + y * k, rr * k - 1, BLANC); if (k > 0.7f) g->drawCircle(cx + x * k, cy + y * k, rr * k - 2, BLANC); } };
+  auto Rr = [&](float x, float y, float w, float h, bool plein = false) { if (plein) g->fillRoundRect(cx + x * k, cy + y * k, w * k, h * k, 3 * k, BLANC); else { g->drawRoundRect(cx + x * k, cy + y * k, w * k, h * k, 3 * k, BLANC); g->drawRoundRect(cx + x * k + 1, cy + y * k + 1, w * k - 2, h * k - 2, 3 * k, BLANC); } };
+  String i = id;
+  if (i == "heure") { C(0, 0, 18); L(0, 0, 0, -11); L(0, 0, 8, 4); }
+  else if (i == "meteo") { C(-4, -4, 9, true); for (int a = 0; a < 8; a++) { float an = a * 0.785f; L(-4 + cosf(an) * 13, -4 + sinf(an) * 13, -4 + cosf(an) * 17, -4 + sinf(an) * 17, 2); } g->fillRoundRect(cx - 4 * k, cy + 6 * k, 24 * k, 10 * k, 5 * k, BLANC); }
+  else if (i == "minuteur") { C(0, 3, 15); L(0, 3, 0, -6); L(-5, -16, 5, -16); }
+  else if (i == "chrono") { C(0, 3, 15); L(0, 3, 7, -4); Rr(-3, -18, 6, 5, true); }
+  else if (i == "reveils") { C(0, 2, 14); L(0, 2, 0, -6); L(0, 2, 6, 5); L(-13, -12, -7, -17); L(13, -12, 7, -17); }
+  else if (i == "taches") { for (int a = 0; a < 3; a++) { L(-15, -10 + a * 10, -11, -6 + a * 10, 2); L(-11, -6 + a * 10, -6, -14 + a * 10, 2); L(-1, -10 + a * 10, 16, -10 + a * 10); } }
+  else if (i == "agenda") { Rr(-15, -12, 30, 27); L(-15, -4, 15, -4); L(-8, -16, -8, -9); L(8, -16, 8, -9); }
+  else if (i == "radio") { Rr(-17, -8, 34, 22); C(-7, 3, 6); L(5, -2, 12, -2, 2); L(5, 4, 12, 4, 2); L(-8, -8, 8, -17, 2); }
+  else if (i == "musique") { L(-6, 10, -6, -12); L(-6, -12, 10, -16); L(10, -16, 10, 6); C(-10, 10, 5, true); C(6, 6, 5, true); }
+  else if (i == "lampe") { g->fillTriangle(cx - 12 * k, cy - 12 * k, cx + 12 * k, cy - 12 * k, cx, cy + 4 * k, BLANC); Rr(-4, 2, 8, 14, true); }
+  else if (i == "respiration") { C(0, 0, 6); C(0, 0, 12); C(0, 0, 18); }
+  else if (i == "pas") { g->fillEllipse(cx - 7 * k, cy - 4 * k, 5 * k, 9 * k, BLANC); g->fillEllipse(cx + 7 * k, cy + 5 * k, 5 * k, 9 * k, BLANC); }
+  else if (i == "sport") { L(-12, 0, 12, 0); Rr(-18, -8, 6, 16, true); Rr(12, -8, 6, 16, true); }
+  else if (i == "dessin") { L(-12, 12, 10, -10, 5); g->fillTriangle(cx - 15 * k, cy + 15 * k, cx - 13 * k, cy + 8 * k, cx - 8 * k, cy + 13 * k, BLANC); }
+  else if (i == "tables") { L(-10, -10, 10, 10, 4); L(10, -10, -10, 10, 4); }
+  else if (i == "reflexes") { g->fillTriangle(cx + 4 * k, cy - 18 * k, cx - 10 * k, cy + 2 * k, cx + 1 * k, cy + 2 * k, BLANC); g->fillTriangle(cx - 4 * k, cy + 18 * k, cx + 10 * k, cy - 2 * k, cx - 1 * k, cy - 2 * k, BLANC); }
+  else if (i == "quiz") { if (k > 0.7f) texteCentre(F_TITRE, "?", cx, cy + 11 * k, BLANC); else texteCentre(F_PETIT, "?", cx, cy + 5, BLANC); }
+  else if (i == "blindtest") { L(-4, 12, -4, -12); L(-4, -12, 10, -8); C(-8, 12, 5, true); L(10, -2, 16, -6, 2); L(10, 6, 16, 10, 2); }
+  else if (i == "bruit") { for (int a = 0; a < 5; a++) { int h = (int)(6 + (a % 3) * 7 + (a == 2) * 6); L(-14 + a * 7, -h, -14 + a * 7, h, 3); } }
+  else if (i == "niveau") { Rr(-17, -6, 34, 12); C(0, 0, 4, true); L(-6, -6, -6, 6, 1); L(6, -6, 6, 6, 1); }
+  else if (i == "actu") { Rr(-15, -12, 30, 24); L(-10, -5, 10, -5, 2); L(-10, 0, 10, 0, 2); L(-10, 5, 4, 5, 2); }
+  else if (i == "traduire") { if (k > 0.7f) texteCentre(F_FORT, "Aa", cx, cy + 7 * k, BLANC); else texteCentre(F_PETIT, "Aa", cx, cy + 5, BLANC); }
+  else if (i == "plan") { C(0, -5, 9); g->fillTriangle(cx - 8 * k, cy - 1 * k, cx + 8 * k, cy - 1 * k, cx, cy + 16 * k, BLANC); C(0, -5, 3, true); }
+  else if (i == "habitudes") { C(0, 0, 15); L(-7, 0, -2, 6); L(-2, 6, 8, -6); }
+  else if (i == "defi") { g->fillTriangle(cx, cy - 16 * k, cx - 6 * k, cy - 2 * k, cx + 6 * k, cy - 2 * k, BLANC); C(0, 4, 8, true); }
+  else if (i == "des") { Rr(-13, -13, 26, 26); C(-6, -6, 3, true); C(6, 6, 3, true); C(0, 0, 3, true); }
+  else if (i == "wifi_invite") { for (int a = 0; a < 3; a++) g->fillArc(cx, cy + 10 * k, (8 + a * 7) * k, (5 + a * 7) * k, 225, 315, BLANC); C(0, 10, 3, true); }
+  else if (i == "appareil") { C(0, 0, 9); for (int a = 0; a < 8; a++) { float an = a * 0.785f; L(cosf(an) * 11, sinf(an) * 11, cosf(an) * 16, sinf(an) * 16, 4); } }
+}
+static void dessinerGrille(uint32_t m) {
+  float meilleur = 1e9;
+  for (int i = 0; i < NB_APPS; i++) {
+    float x, y, s; posApp(i, x, y, s);
+    float r = 38 * s;
+    if (y < -r || y > ECRAN + r) continue;
+    float dx = x - CENTRE, dy = y - CENTRE;
+    if (dx * dx + dy * dy > (R + r) * (R + r)) continue;
+    float d = dx * dx + dy * dy;
+    if (d < meilleur) { meilleur = d; grilleProche = i; }
+    g->fillCircle(x, y, r, APPS[i].c);
+    if (s > 0.85f) g->drawCircle(x, y, r, attenue(BLANC, 0.25f));
+    iconeApp(APPS[i].id, x, y, r);
+  }
+  // nom de l'appli du centre, en bas (comme sur une montre)
+  int w = largeur(F_SOUS, APPS[grilleProche].nom) + 28;
+  g->fillRoundRect(CENTRE - w / 2, 404, w, 30, 15, 0x10A2);
+  texteCentre(F_SOUS, APPS[grilleProche].nom, CENTRE, 425, BLANC);
+}
 void ui::dessiner(uint32_t m) {
   VERROU;
   float dt = derniereImage ? std::min<uint32_t>(m - derniereImage, 100) / 1000.f : 0.03f;
@@ -1370,6 +1485,16 @@ void ui::dessiner(uint32_t m) {
   uint16_t *fb = ui::tampon ? ui::tampon() : nullptr;
   if (fb) memset(fb, 0, ECRAN * ECRAN * 2);
   else g->fillScreen(NOIR);
+  if (grille) {
+    if (!appui && grilleVit != 0) {   // élan après un glissé
+      grilleDefil = clampf(grilleDefil + grilleVit, 0, grilleMax());
+      grilleVit *= 0.9f; if (fabsf(grilleVit) < 0.3f) grilleVit = 0;
+    }
+    if (m - grilleAction > 25000) grille = false;   // retour au visage tout seul
+    dessinerGrille(m);
+    bougeEncore = true;
+    return;
+  }
   if (photoPx) {
     g->draw16bitRGBBitmap(0, 0, photoPx, ECRAN, ECRAN);
     if (photoTxt.length()) {
@@ -1829,3 +1954,6 @@ void ui::dessiner(uint32_t m) {
   }
   bougeEncore = true;
 }
+
+void ui::applis(bool on) { VERROU; if (on) ouvrirGrille(); else grille = false; }
+bool ui::applisOuvertes() { return grille; }

@@ -482,6 +482,7 @@ static void carteJeu(const char *type) {
 static void carteLocale(const String &quoi) {
   if (quoi.startsWith("tables")) { ui::tables(quoi.indexOf(':') > 0 ? quoi.substring(quoi.indexOf(':') + 1).toInt() : 0); carteJeu("tables"); }
   else if (quoi == "heure") carteHeure();
+  else if (quoi == "apps") { ui::fermerCarte(); ui::applis(true); }
   else if (quoi == "pas") { sauverPas(false); carteJeu("pas"); }
   else if (quoi == "bruit" || quoi == "niveau" || quoi == "reflexes") carteJeu(quoi == "bruit" ? "bruit" : quoi == "niveau" ? "niveau" : "reflexes");
   else if (quoi == "wifi_invite") {   // QR code fait ici : le mot de passe ne quitte jamais le boîtier
@@ -713,6 +714,8 @@ void setup() {
     else if (id == "encore_reveil") finReveil(true);
     else if (id == "stop_radio") { audio::radioStop(); ui::fermerCarte(); }
     else if (id == "test_son") testSon = true;
+    else if (id.startsWith("appl:")) carteLocale(id.substring(5));            // appli du boîtier
+    else if (id.startsWith("appq:")) { allumerEcran(); cerveau::question(id.substring(5)); }   // appli qui passe par le cerveau
     else if (id == "record_reflexes") { Preferences pr; pr.begin("jeux", false); pr.putInt("reflexes", ui::recordReflexes); pr.end(); }
     else if (id == "record_tables") { Preferences pr; pr.begin("jeux", false); pr.putInt("tables", ui::recordTables); pr.end(); }
     else if (id == "blindtest_encore") cerveau::question("Encore un blind test !");
