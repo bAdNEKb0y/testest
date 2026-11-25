@@ -252,6 +252,24 @@ static int lampeCouleur = 0;
 static bool chronoMarche = false;
 static uint32_t chronoDepart = 0, chronoCumul = 0;
 static uint32_t respDebut = 0;
+// dessin au doigt : une feuille de 466 x 466 gardée en mémoire tant que la carte est ouverte
+static uint16_t *feuille = nullptr;
+static int crayon = 0, crayonX = -1, crayonY = -1;
+static const uint16_t PALETTE[6] = {0xFFFF, 0x371F, 0xFE60, 0xFA6F, 0x4F50, 0xF8A3};
+static void pointFeuille(int cx, int cy, int r, uint16_t c) {
+  for (int y = std::max(0, cy - r); y <= std::min(ECRAN - 1, cy + r); y++)
+    for (int x = std::max(0, cx - r); x <= std::min(ECRAN - 1, cx + r); x++)
+      if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r) feuille[y * ECRAN + x] = c;
+}
+static void traitFeuille(int x0, int y0, int x1, int y1, int r, uint16_t c) {
+  int n = std::max(1, (int)(sqrtf((float)(x1 - x0) * (x1 - x0) + (float)(y1 - y0) * (y1 - y0)) / 2));
+  for (int i = 0; i <= n; i++) pointFeuille(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, r, c);
+}
+static bool dansPalette(int x, int y, int &choix) {   // 6 couleurs, la gomme, tout effacer
+  if (y < 398 || y > 446 || x < CENTRE - 120 || x > CENTRE + 120) return false;
+  choix = std::max(0, std::min(7, (x - (CENTRE - 120)) / 30));
+  return true;
+}
 static float testMicro = 0, testMicroMax = 0;
 static int testX = -1, testY = -1;
 static bool musiqueOn = false, aubeOn = false;
@@ -547,6 +565,28 @@ static void tape(int x, int y) {
 
 void ui::toucher(int x, int y, bool presse, uint32_t t) {
   VERROU;
+  if (carte && carteVisible && carte->type == "dessin" && carteY < HAUT_CARTE + 4) {
+    if (!feuille) { feuille = (uint16_t *)malloc(ECRAN * ECRAN * 2); if (feuille) memset(feuille, 0, ECRAN * ECRAN * 2); }
+    derniereAction = millis();
+    if (!presse) { crayonX = -1; appui = false; return; }
+    int choix;
+    if (!appui && y < 64 && abs(x - CENTRE) < 40) { ui::fermerCarte(); return; }
+    if (!appui && dansPalette(x, y, choix)) {
+      if (choix == 6) crayon = -1;
+      else if (choix == 7) { if (feuille) memset(feuille, 0, ECRAN * ECRAN * 2); }
+      else crayon = choix;
+      appui = true; crayonX = -1; return;
+    }
+    if (appui && crayonX < 0) return;
+    appui = true;
+    if (feuille) {
+      uint16_t c = crayon < 0 ? 0 : PALETTE[crayon];
+      int r = crayon < 0 ? 14 : 5;
+      if (crayonX < 0) pointFeuille(x, y, r, c); else traitFeuille(crayonX, crayonY, x, y, r, c);
+    }
+    crayonX = x; crayonY = y;
+    return;
+  }
   if (photoPx) {  // photo ou carte en grand : un toucher la referme, glisser haut/bas zoome une carte
     if (presse && !appui) { appui = true; photoY0 = y; yp = y; }
     if (presse) yp = y;
@@ -996,6 +1036,7 @@ void ui::dessiner(uint32_t m) {
   if (!appui) tirage = approche(tirage, 0, 12, dt);
   carteY = (appui && carteVisible) ? cibleY : approche(carteY, cibleY, carteVisible ? 11 : 9, dt);
   if (!carteVisible && carteY > ECRAN - 2 && carte) {
+    if (carte->type == "dessin" && feuille) { free(feuille); feuille = nullptr; }
     // fermée pour de bon : on la garde pour pouvoir la rouvrir
     if (derniere && derniere != carte) delete derniere;
     derniere = carte->locale && carte->type == "minuteur" ? (delete carte, nullptr) : carte;
@@ -1011,7 +1052,7 @@ void ui::dessiner(uint32_t m) {
   }
   // fermeture automatique quand on ne s'en sert plus
   if (carte && carteVisible && !appui && act != A_PARLE && act != A_ECOUTE && act != A_REFLECHIT) {
-    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche);
+    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "dessin" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche);
     uint32_t delai = garde ? 0 : (carte->type == "heure" ? 25000 : 60000);
     if (delai && m - derniereAction > delai) carteVisible = false;
   }
@@ -1249,6 +1290,23 @@ void ui::dessiner(uint32_t m) {
       texteCentre(F_SOUS, b, CENTRE, 440, GRIS_CLAIR);
     }
   }
+  // dessin au doigt : la feuille en plein écran, la palette en bas, la croix en haut
+  if (carte && carteVisible && carte->type == "dessin" && carteY < HAUT_CARTE + 40) {
+    if (feuille && fb) memcpy(fb, feuille, ECRAN * ECRAN * 2);
+    else if (feuille) g->draw16bitRGBBitmap(0, 0, feuille, ECRAN, ECRAN);
+    else g->fillScreen(NOIR);
+    g->fillCircle(CENTRE, 40, 18, 0x18E3);
+    g->drawLine(CENTRE - 6, 34, CENTRE + 6, 46, BLANC); g->drawLine(CENTRE + 6, 34, CENTRE - 6, 46, BLANC);
+    for (int i = 0; i < 8; i++) {
+      int px = CENTRE - 105 + i * 30, py = 420;
+      if (i < 6) g->fillCircle(px, py, 10, PALETTE[i]);
+      else if (i == 6) { g->drawCircle(px, py, 10, BLANC); g->fillRect(px - 5, py - 3, 10, 6, BLANC); }
+      else { g->drawCircle(px, py, 10, GRIS); g->drawLine(px - 5, py - 5, px + 5, py + 5, GRIS); g->drawLine(px + 5, py - 5, px - 5, py + 5, GRIS); }
+      if (i == crayon || (i == 6 && crayon < 0)) g->drawCircle(px, py, 14, BLANC);
+    }
+    if (m - carteOuverteA < 3500) texteCentre(F_PETIT, "dessine avec ton doigt", CENTRE, 90, GRIS);
+  }
+
   // lampe : tout l'écran éclaire (blanc chaud, blanc, rouge de nuit, couleur des yeux, arc-en-ciel)
   if (carte && carteVisible && carte->type == "lampe" && carteY < HAUT_CARTE + 40) {
     uint16_t cl[] = {0xFF18, 0xFFFF, 0xC000, accent, 0};

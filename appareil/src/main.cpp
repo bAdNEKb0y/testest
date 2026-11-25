@@ -416,7 +416,7 @@ static void carteOutil(const char *type) {
 
 static void carteLocale(const String &quoi) {
   if (quoi == "heure") carteHeure();
-  else if (quoi == "lampe" || quoi == "chrono" || quoi == "respiration" || quoi == "test") carteOutil(quoi.c_str());
+  else if (quoi == "lampe" || quoi == "chrono" || quoi == "respiration" || quoi == "test" || quoi == "dessin") carteOutil(quoi.c_str());
   else carteAppareil();
 }
 
