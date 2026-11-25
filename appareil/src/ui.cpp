@@ -337,7 +337,7 @@ static void miseEnPage() {
         // espaces entre les blocs
         if (b.k == B_TITRE || b.k == B_IMAGE || b.k == B_METEO || b.k == B_CHOIX) p.hauteur += 12;
         else if (b.k == B_TEXTE && prec != B_SOUS) p.hauteur += 8;
-        else if ((b.k == B_LIGNE || b.k == B_DEPART || b.k == B_JOUR || b.k == B_CASE) && prec != b.k) p.hauteur += 12;
+        else if ((b.k == B_LIGNE || b.k == B_DEPART || b.k == B_JOUR || b.k == B_CASE || b.k == B_BARRE) && prec != b.k) p.hauteur += 12;
         else if (b.k == B_REPONSE) p.hauteur += 16;
         else if (b.k == B_SOUS) p.hauteur += 6;
       }
@@ -447,10 +447,10 @@ static void miseEnPage() {
           break;
         }
         case B_GRAPHE: {   // météo de la semaine : max en orange, min en bleu, pluie en barres
-          Elem e{E_GRAPHE, CENTRE - 150, p.hauteur, 300, 190};
+          Elem e{E_GRAPHE, CENTRE - 150, p.hauteur, 300, 164};
           e.bloc = &b;
           p.elems.push_back(e);
-          p.hauteur += 198;
+          p.hauteur += 168;
           break;
         }
         case B_BARRE: {    // une ligne avec une barre proportionnelle (dépenses par catégorie…)
@@ -1062,19 +1062,20 @@ static void dessinerPage(int idx, int dx, int base) {
         int mn[7], mx[7], pl[7]; String jr[7];
         int lo = 99, hi = -99;
         for (int i = 0; i < n; i++) {
-          String s = it[i]; int a1 = s.indexOf('|'), a2 = s.indexOf('|', a1 + 1), a3 = s.indexOf('|', a2 + 1);
-          jr[i] = s.substring(0, a1); mn[i] = s.substring(a1 + 1, a2).toInt(); mx[i] = s.substring(a2 + 1, a3).toInt(); pl[i] = s.substring(a3 + 1).toInt();
+          char j[16] = ""; mn[i] = mx[i] = pl[i] = 0;
+          sscanf(it[i].c_str(), "%15[^|]|%d|%d|%d", j, &mn[i], &mx[i], &pl[i]);
+          jr[i] = j;
           lo = std::min(lo, mn[i]); hi = std::max(hi, mx[i]);
         }
         if (hi - lo < 6) { hi += 3; lo -= 3; }
-        int gx = x + 18, gw = e.w - 36, gy = y + 26, gh = 100;
+        int gx = x + 18, gw = e.w - 36, gy = y + 22, gh = 76;
         auto px = [&](int i) { return gx + (n == 1 ? gw / 2 : i * gw / (n - 1)); };
         auto py = [&](int v) { return gy + gh - (v - lo) * gh / (hi - lo); };
         for (int i = 0; i < n; i++) {   // pluie : barres en bas
-          int bh = pl[i] * 30 / 100;
-          if (bh > 1) g->fillRoundRect(px(i) - 9, y + 162 - bh, 18, bh, 4, attenue(0x3D7F, 0.55f));
-          if (pl[i] >= 30) texteCentre(F_PETIT, String(pl[i]) + "%", px(i), y + 160 - bh - 4, 0x5DDF);
-          texteCentre(F_PETIT, jr[i], px(i), y + 184, i == 0 ? BLANC : GRIS);
+          int bh = pl[i] * 22 / 100;
+          if (bh > 1) g->fillRoundRect(px(i) - 9, y + 140 - bh, 18, bh, 4, attenue(0x3D7F, 0.55f));
+          if (pl[i] >= 30) texteCentre(F_PETIT, String(pl[i]) + "%", px(i), y + 138 - bh - 3, 0x5DDF);
+          texteCentre(F_PETIT, jr[i], px(i), y + 160, i == 0 ? BLANC : GRIS);
         }
         for (int i = 0; i + 1 < n; i++)
           for (int k = -1; k <= 1; k++) {
