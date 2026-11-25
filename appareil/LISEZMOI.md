@@ -13,10 +13,10 @@ Le boîtier, c'est le **corps** : le visage, les oreilles et la voix. Le **cerve
 1. Branche la carte au PC avec un câble USB-C **qui transfère des données**.
 2. Ouvre **Chrome** sur https://espressif.github.io/esptool-js/ puis clique sur **Connect** et choisis le port (souvent « USB JTAG/serial debug unit »).
    - Si rien n'apparaît : débranche, maintiens le bouton **BOOT**, rebranche, puis relâche.
-3. Dans la ligne « Flash Address », mets **0x0** et choisis le fichier **`nexxus-complet.bin`**.
+3. Dans la ligne « Flash Address », mets **0x0** et choisis le fichier **`komi-complet.bin`**.
 4. Clique sur **Program**, attends 100 %, puis appuie sur le bouton de reset (ou débranche et rebranche la carte).
 
-Ensuite, les mises à jour se font **sans câble**, depuis la page de réglages, avec le fichier `nexxus-maj.bin`.
+Ensuite, les mises à jour se font **sans câble**, depuis la page de réglages, avec le fichier `komi-maj.bin`.
 
 ## 3. Premier démarrage
 

@@ -101,7 +101,7 @@ button.second{background:#1a222d;color:var(--t)}button.danger{background:#2a1416
 <p style="margin-top:14px"><button onclick="sauver(['wifi_invite_nom','wifi_invite_mdp']);$('wifi_invite_mdp').value=''">Enregistrer</button></p>
 </section>
 <section><h2>Mise à jour</h2>
-<p class="note" style="margin-top:0">Envoie le fichier <b>nexxus-maj.bin</b>. Il redémarre tout seul à la fin.</p>
+<p class="note" style="margin-top:0">Envoie le fichier <b>komi-maj.bin</b>. Il redémarre tout seul à la fin.</p>
 <input type="file" id="fichier" accept=".bin"><progress id="prog" value="0" max="100" hidden></progress>
 <p style="margin-top:12px"><button onclick="maj()">Mettre à jour</button></p>
 </section>
@@ -131,7 +131,7 @@ async function tester(){$('tests').innerHTML='<div>Test en cours…</div>';try{c
  catch(e){$('tests').textContent=e.message}}
 async function scan(){toast('Recherche…');const l=await api('/api/scan');const s=$('ssid');s.innerHTML='<option value="">— Choisir —</option>';l.sort((a,b)=>b.force-a.force).forEach(r=>{const o=document.createElement('option');o.value=r.ssid;o.textContent=r.ssid+(r.ouvert?' (ouvert)':'');s.append(o)})}
 async function ajouterWifi(){const ssid=$('ssidm').value||$('ssid').value;if(!ssid)return toast('Choisis un réseau');try{remplir(await post('/api/wifi',{ssid,mdp:$('mdp').value}));$('mdp').value='';toast('Ajouté : il va essayer de s\'y connecter')}catch(e){toast(e.message)}}
-function maj(){const f=$('fichier').files[0];if(!f)return toast('Choisis le fichier nexxus-maj.bin');const x=new XMLHttpRequest();const fd=new FormData();fd.append('f',f);
+function maj(){const f=$('fichier').files[0];if(!f)return toast('Choisis le fichier komi-maj.bin');const x=new XMLHttpRequest();const fd=new FormData();fd.append('f',f);
  $('prog').hidden=false;x.upload.onprogress=e=>$('prog').value=e.loaded/e.total*100;x.onload=()=>toast(x.status==200?'Fini ! Il redémarre…':'Échec de la mise à jour');x.open('POST','/maj');x.send(fd)}
 async function etat(){try{const e=await api('/api/etat');const c=[['Wi-Fi',e.wifi||'—'],['Adresse',e.ip||'—'],['Batterie',e.batterie],['Cerveau',e.cerveau],['Version',e.version],['Bluetooth',e.bluetooth]];
  $('etat').innerHTML='';c.forEach(([k,v])=>{const d=document.createElement('div');const b=document.createElement('b');b.textContent=k;d.append(b,document.createTextNode(v));$('etat').append(d)});
