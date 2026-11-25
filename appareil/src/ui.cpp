@@ -107,7 +107,7 @@ static String nettoyer(const String &s) {
       case 0x2013: case 0x2014: case 0x2212: o += '-'; break;
       case 0x0153: o += "oe"; break;
       case 0x0152: o += "OE"; break;
-      case 0x20AC: o += " EUR"; break;
+      case 0x20AC: o += "\x01"; break;   // € : dessiné à la main (la police ne l'a pas)
       case 0x2192: o += "\xC2\xBB"; break;  // → devient »
       case 0x202F: case 0x2009: case 0x200A: o += ' '; break;
       case 0x2022: o += "\xC2\xB7"; break;
@@ -117,17 +117,52 @@ static String nettoyer(const String &s) {
   return o;
 }
 
-static int largeur(const uint8_t *police, const String &s) {
+static int hauteurChiffre(const uint8_t *police) {   // hauteur d'un chiffre : sert à dessiner le €
   g->setFont(police);
+  int16_t x1, y1; uint16_t w, h;
+  g->getTextBounds("0", 0, 100, &x1, &y1, &w, &h);
+  return h;
+}
+static int largeurEuro(const uint8_t *police) { int h = hauteurChiffre(police); return h * 8 / 10 + h / 5 + 3; }
+static int largeurBrute(const String &s) {
   int16_t x1, y1; uint16_t w, h;
   g->getTextBounds(s.c_str(), 0, 100, &x1, &y1, &w, &h);
   return w;
 }
+static int largeur(const uint8_t *police, const String &s) {
+  g->setFont(police);
+  if (s.indexOf('\x01') < 0) return largeurBrute(s);
+  int w = 0, debut = 0;
+  for (int i = 0; i <= (int)s.length(); i++)
+    if (i == (int)s.length() || s[i] == '\x01') {
+      String bout = s.substring(debut, i);
+      if (bout.length()) { g->setFont(police); w += largeurBrute(bout) + (bout.endsWith(" ") ? hauteurChiffre(police) / 4 : 0); }
+      if (i < (int)s.length()) w += largeurEuro(police);
+      debut = i + 1;
+    }
+  return w;
+}
+static void euro(const uint8_t *police, int x, int y, uint16_t couleur) {   // un € propre, à la taille des chiffres
+  int h = hauteurChiffre(police), r = h / 2, ep = std::max(2, h / 7);
+  x += h / 5;   // l'espace avant le €
+  int cx = x + r + 1, cy = y - r;
+  g->fillArc(cx, cy, r, r - ep, 45, 315, couleur);
+  int bx = x - 1, bw = r + 2;
+  g->fillRect(bx, cy - h / 6 - ep / 2, bw, ep, couleur);
+  g->fillRect(bx, cy + h / 6 - ep / 2 + 1, bw - 2, ep, couleur);
+}
 static void texte(const uint8_t *police, const String &s, int x, int y, uint16_t couleur) {
   g->setFont(police);
   g->setTextColor(couleur);
-  g->setCursor(x, y);
-  g->print(s);
+  if (s.indexOf('\x01') < 0) { g->setCursor(x, y); g->print(s); return; }
+  int debut = 0;
+  for (int i = 0; i <= (int)s.length(); i++)
+    if (i == (int)s.length() || s[i] == '\x01') {
+      String bout = s.substring(debut, i);
+      if (bout.length()) { g->setFont(police); g->setCursor(x, y); g->print(bout); x += largeurBrute(bout) + (bout.endsWith(" ") ? hauteurChiffre(police) / 4 : 0); }
+      if (i < (int)s.length()) { euro(police, x, y, couleur); x += largeurEuro(police); }
+      debut = i + 1;
+    }
 }
 static void texteCentre(const uint8_t *police, const String &s, int cx, int y, uint16_t couleur) {
   texte(police, s, cx - largeur(police, s) / 2, y, couleur);
@@ -148,7 +183,7 @@ static std::vector<String> couper(const uint8_t *police, const String &s, int la
     // typographie française : pas de « ? », « ! », « : » ou « » » tout seul en début de ligne, ni de « « » en fin de ligne
     if (c == ' ' && i + 1 < s.length()) {
       uint8_t n1 = s[i + 1], n2 = i + 2 < s.length() ? (uint8_t)s[i + 2] : 0;
-      bool colle = n1 == '?' || n1 == '!' || n1 == ':' || n1 == ';' || (n1 == 0xC2 && n2 == 0xBB);
+      bool colle = n1 == '?' || n1 == '!' || n1 == ':' || n1 == ';' || n1 == 0x01 || (n1 == 0xC2 && n2 == 0xBB);
       if (i >= 2 && (uint8_t)s[i - 2] == 0xC2 && (uint8_t)s[i - 1] == 0xAB) colle = true;
       if (colle && mot.length()) { mot += ' '; continue; }
     }
