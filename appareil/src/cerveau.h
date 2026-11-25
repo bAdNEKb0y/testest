@@ -23,5 +23,7 @@ namespace cerveau {
   extern void (*surInvite)(bool actif);           // mode invité (se désactive par un appui long sur BOOT)
   extern void (*surPauses)(int minutes, int heures);   // rappels de pause écran (0 = arrêter)
   extern volatile bool modeInvite;
+  extern volatile bool silence;                   // mode école : il ne parle plus du tout
+  extern void (*surEcole)(int minutes);           // mode école (jusqu'à la fin, en minutes)
   extern void (*surAlarmesChangees)();
 }

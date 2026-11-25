@@ -19,6 +19,8 @@ void (*surNePasDeranger)(int) = nullptr;
 void (*surInvite)(bool) = nullptr;
 void (*surPauses)(int, int) = nullptr;
 volatile bool modeInvite = false;
+volatile bool silence = false;
+void (*surEcole)(int) = nullptr;
 void (*surStopRadio)() = nullptr;
 void (*surAlarmesChangees)() = nullptr;
 }
@@ -279,6 +281,7 @@ static void reflechir(const String &texte, uint32_t gen) {
     else if (type == "musique" && cerveau::surRadio) { radioApres = a["url"] | ""; radioNom = a["nom"] | "Radio"; blindTest = String(a["jeu"] | "") == "blindtest"; }
     else if (type == "stop_musique" && cerveau::surStopRadio) cerveau::surStopRadio();
     else if (type == "alarmes" && cerveau::surAlarmesChangees) cerveau::surAlarmesChangees();
+    else if (type == "ecole" && cerveau::surEcole) cerveau::surEcole(a["minutes"] | 0);
     else if (type == "invite" && cerveau::surInvite) cerveau::surInvite(a["actif"] | false);
     else if (type == "pauses" && cerveau::surPauses) cerveau::surPauses(a["minutes"] | 0, a["heures"] | 3);
     else if (type == "ndd" && cerveau::surNePasDeranger) cerveau::surNePasDeranger(a["minutes"] | 0);
@@ -394,11 +397,12 @@ static void envoyer(TypeDemande t, const String &texte) {
 }
 
 void cerveau::parler() {
+  if (cerveau::silence) return;
   if (enEcoute) { finEcoute = true; return; }  // toucher pendant l'écoute = j'ai fini
   envoyer(D_ECOUTER, "");
 }
-void cerveau::question(const String &texte) { if (texte.length()) envoyer(D_QUESTION, texte); }
-void cerveau::dire(const String &texte) { if (texte.length()) envoyer(D_DIRE, texte); }
+void cerveau::question(const String &texte) { if (texte.length() && !cerveau::silence) envoyer(D_QUESTION, texte); }
+void cerveau::dire(const String &texte) { if (texte.length() && !cerveau::silence) envoyer(D_DIRE, texte); }
 void cerveau::taire() {
   ++generation;
   coupe = true;

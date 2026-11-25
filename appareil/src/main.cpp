@@ -63,6 +63,11 @@ static bool tactileOk = false, imuOk = false, pmuOk = false;
 static uint32_t derniereActivite = 0;
 static int luminositeActuelle = -1;
 static bool ecranEteint = false, veilleForcee = false;
+// mode école : écran éteint, aucun son, le toucher ne fait rien ; appui long 3 s sur BOOT pour sortir
+static bool ecoleActif = false;
+static time_t ecoleJusqua = 0;
+static int ecoleSautJour = -1, ecoleMinutesDemande = 0;
+static uint32_t ecoleDemarreA = 0;
 static int batterie = -1;
 static bool enCharge = false;
 
@@ -99,7 +104,7 @@ static void tacheTest(void *) {
 static void tacheSonnerie(void *) {
   static const int notes[] = {1319, 0, 1319, 0, 1568, 0, 0, 0};
   while (true) {
-    if (sonnerie && !cerveau::occupe()) {
+    if (sonnerie && !cerveau::occupe() && !ecoleActif) {
       if (reveilActif) {  // réveil en douceur : de plus en plus fort
         static const int doux[] = {784, 988, 1175, 1568, 0, 0};
         float f = std::min(0.3f, 0.04f + (millis() - sonnerieDebut) / 90000.f * 0.26f);
@@ -185,7 +190,7 @@ static void peutEtreProposer() {
   uint32_t m = millis();
   if (dernierEssai && m - dernierEssai < 40 * 60000) return;
   time_t t = time(nullptr); struct tm tm; localtime_r(&t, &tm);
-  if (tm.tm_year < 120 || tm.tm_hour < 8 || tm.tm_hour >= 21 || estLaNuit() || nePasDeranger() || cerveau::modeInvite) return;
+  if (tm.tm_year < 120 || tm.tm_hour < 8 || tm.tm_hour >= 21 || estLaNuit() || nePasDeranger() || cerveau::modeInvite || ecoleActif) return;
   if (tm.tm_yday != jour) { jour = tm.tm_yday; nbAujourdhui = 0; }
   if (nbAujourdhui >= 8 || ecranEteint || cerveau::occupe()) return;
   uint32_t calme = m - derniereActivite;
@@ -380,6 +385,7 @@ static void carteMinuteurFini(const String &nom) {
 static uint32_t repeterReveilA = 0;
 static String reveilNom;
 static void sonnerReveil(const String &nom) {
+  if (ecoleActif) return;   // mode école : pas de sonnerie
   allumerEcran();
   reveilActif = true;
   reveilNom = nom;
@@ -561,6 +567,7 @@ String executerCommande(const String &brute) {
 
 // ------------------------------------------------------------------ démarrage
 static void allumerEcran() {
+  if (ecoleActif) return;
   if (ecranEteint) { doitAllumer = true; ecranEteint = false; }
   ui::modeVeille(false);
   veilleForcee = false;
@@ -704,6 +711,11 @@ void setup() {
     envoyer(d);
   };
   ui::titreMusique = audio::titreRadio;
+  cerveau::surEcole = [](int minutes) {
+    if (minutes <= 0) return;
+    ecoleMinutesDemande = minutes;
+    ecoleDemarreA = millis() + 7000;   // le temps de dire « bonne journée »
+  };
   cerveau::surInvite = [](bool actif) {
     cerveau::modeInvite = actif;
     ui::invite = actif;
@@ -828,6 +840,7 @@ void loop() {
     if (R.sensToucher & 1) tx[0] = ECRAN - 1 - tx[0];
     if (R.sensToucher & 2) ty[0] = ECRAN - 1 - ty[0];
   }
+  if (ecoleActif) presse = false;   // mode école : le toucher ne fait rien
   if (presse && !appuiEnCours) {
     appuiEnCours = true;
     // le premier toucher sur un écran éteint ou endormi sert juste à le réveiller
@@ -845,15 +858,23 @@ void loop() {
   static uint32_t clicEnAttente = 0;
   bool boot = digitalRead(BOUTON_BOOT) == LOW;
   if (boot && !bootAvant) {
-    if (clicEnAttente && m - clicEnAttente < 380) { clicEnAttente = 0; bootLongFait = true; allumerEcran(); personnaliteSuivante(); }
+    if (ecoleActif) { dernierBoot = m; bootLongFait = false; clicEnAttente = 0; }
+    else if (clicEnAttente && m - clicEnAttente < 380) { clicEnAttente = 0; bootLongFait = true; allumerEcran(); personnaliteSuivante(); }
     else { dernierBoot = m; bootLongFait = false; }
   }
-  if (boot && !bootLongFait && m - dernierBoot > 1500) {
-    bootLongFait = true; clicEnAttente = 0; allumerEcran();
-    if (cerveau::modeInvite) { cerveau::modeInvite = false; ui::invite = false; inviteJusqua = 0; ui::humeur(H_CONTENT, 3000); ui::sousTitre("Mode invité terminé. Re-bonjour !", 3500); }
-    else carteAppareil();
+  if (boot && !bootLongFait && m - dernierBoot > (ecoleActif ? 3000u : 1500u)) {
+    bootLongFait = true; clicEnAttente = 0;
+    if (ecoleActif) {   // sortie du mode école jusqu'à demain
+      time_t t = time(nullptr); struct tm tm; localtime_r(&t, &tm);
+      ecoleSautJour = tm.tm_yday; ecoleJusqua = 0;
+    }
+    else {
+      allumerEcran();
+      if (cerveau::modeInvite) { cerveau::modeInvite = false; ui::invite = false; inviteJusqua = 0; ui::humeur(H_CONTENT, 3000); ui::sousTitre("Mode invité terminé. Re-bonjour !", 3500); }
+      else carteAppareil();
+    }
   }
-  if (!boot && bootAvant && !bootLongFait && m - dernierBoot > 30) clicEnAttente = m;
+  if (!boot && bootAvant && !bootLongFait && m - dernierBoot > 30 && !ecoleActif) clicEnAttente = m;
   if (clicEnAttente && !boot && m - clicEnAttente >= 380) { clicEnAttente = 0; allumerEcran(); sonnerie = false; cerveau::parler(); }
   bootAvant = boot;
 
@@ -954,7 +975,7 @@ void loop() {
     if (id.length() && texte.startsWith(">")) {   // rappel-commande : « >Montre ma liste avant de partir » est posé au cerveau
       String *f = new String(id);
       if (xQueueSend(fileRappelsFaits, &f, 0) != pdTRUE) delete f;
-      if (!nePasDeranger()) { allumerEcran(); cerveau::question(texte.substring(1)); }
+      if (!nePasDeranger() && !ecoleActif) { allumerEcran(); cerveau::question(texte.substring(1)); }
       id = "";
     }
     // fin du mode invité au bout de 4 h, et pauses écran
@@ -962,7 +983,7 @@ void loop() {
     if (pauseIntervalle && (int32_t)(millis() - finPauses) > 0) pauseIntervalle = 0;
     if (pauseIntervalle && (int32_t)(millis() - prochainePause) > 0) {
       prochainePause = millis() + pauseIntervalle;
-      if (!nePasDeranger()) {
+      if (!nePasDeranger() && !ecoleActif) {
         static const char *idees[] = {"Regarde au loin pendant 20 secondes", "Lève-toi et étire-toi", "Bois un verre d'eau", "Fais 10 grandes respirations", "Marche un peu dans la pièce", "Ferme les yeux une minute"};
         String idee = idees[numPause++ % 6];
         allumerEcran();
@@ -1010,7 +1031,41 @@ void loop() {
   else if (enVeille) lum = std::min(lum, 70);
   if (lampe) lum = lampe && nuit ? 120 : 255;   // la lampe éclaire vraiment (un peu moins la nuit)
   // le jour, l'écran s'éteint 30 min après la veille ; la nuit, il reste une petite horloge
-  bool eteindre = R.veille > 0 && inactif > (uint32_t)(R.veille + 30) * 60000 && !nuit;
+  // --- mode école : on entre et on sort aux bons moments
+  static uint32_t dernierEcole = 0;
+  if (m - dernierEcole > 1000) {
+    dernierEcole = m;
+    if (ecoleDemarreA && (int32_t)(m - ecoleDemarreA) >= 0) { ecoleJusqua = time(nullptr) + ecoleMinutesDemande * 60; ecoleDemarreA = 0; ecoleSautJour = -1; }
+    bool e = false;
+    time_t t = time(nullptr);
+    if (ecoleJusqua && t < ecoleJusqua) e = true;
+    else if (R.ecole && t > 1700000000) {
+      struct tm tm; localtime_r(&t, &tm);
+      int fin = (tm.tm_wday == 3 && R.ecoleMercrediMatin) ? 12 : R.ecoleFin;
+      e = tm.tm_wday >= 1 && tm.tm_wday <= 5 && tm.tm_yday != ecoleSautJour && tm.tm_hour >= R.ecoleDebut && tm.tm_hour < fin;
+    }
+    if (ecoleJusqua && t >= ecoleJusqua) ecoleJusqua = 0;
+    if (e && !ecoleActif) {
+      cerveau::taire();
+      audio::radioStop();
+      sonnerie = false;
+      ui::fermerCarte();
+      ui::modeVeille(true);
+      ecoleActif = true;
+      cerveau::silence = true;
+    } else if (!e && ecoleActif) {
+      ecoleActif = false;
+      cerveau::silence = false;
+      veilleForcee = false;
+      allumerEcran();
+      derniereActivite = m;
+      ui::modeVeille(false);
+      ui::humeur(H_CONTENT, 4000);
+      ui::sousTitre("Fin du mode école. Re-bonjour !", 4000);
+    }
+    if (ecoleActif) { sonnerie = false; reveilActif = false; }
+  }
+  bool eteindre = (R.veille > 0 && inactif > (uint32_t)(R.veille + 30) * 60000 && !nuit) || ecoleActif;
   if (eteindre && !ecranEteint) { doitEteindre = true; ecranEteint = true; }
   if (!ecranEteint && lum != luminositeActuelle && reveilFait) {
     // transition douce
