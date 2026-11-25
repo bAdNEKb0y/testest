@@ -144,6 +144,13 @@ static std::vector<String> couper(const uint8_t *police, const String &s, int la
   };
   for (unsigned i = 0; i <= s.length(); i++) {
     char c = i < s.length() ? s[i] : ' ';
+    // typographie française : pas de « ? », « ! », « : » ou « » » tout seul en début de ligne, ni de « « » en fin de ligne
+    if (c == ' ' && i + 1 < s.length()) {
+      uint8_t n1 = s[i + 1], n2 = i + 2 < s.length() ? (uint8_t)s[i + 2] : 0;
+      bool colle = n1 == '?' || n1 == '!' || n1 == ':' || n1 == ';' || (n1 == 0xC2 && n2 == 0xBB);
+      if (i >= 2 && (uint8_t)s[i - 2] == 0xC2 && (uint8_t)s[i - 1] == 0xAB) colle = true;
+      if (colle && mot.length()) { mot += ' '; continue; }
+    }
     if (c == ' ' || c == '\n') {
       pousserMot();
       if (c == '\n' && ligne.length()) { lignes.push_back(ligne); ligne = ""; }
