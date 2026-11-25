@@ -171,6 +171,7 @@ static Carte *construireCarte(JsonObject e, std::vector<String> &images) {
         b.c = couleurHex(bj["c"] | "", 0x371F); b.ct = couleurHex(bj["ct"] | "", 0);
       }
       else if (k == "meteo") { b.k = B_METEO; b.code = bj["code"] | 0; b.t = bj["temp"] | ""; b.l = bj["info"] | ""; }
+      else if (k == "qr") { b.k = B_QR; }
       else if (k == "case") { b.k = B_CASE; b.id = bj["id"] | ""; b.fort = bj["fait"] | false; }
       else if (k == "reponse") { b.k = B_REPONSE; b.id = bj["id"] | ""; }
       else if (k == "jour") { b.k = B_JOUR; b.t = bj["j"] | ""; b.code = bj["code"] | 0; b.v = bj["min"] | ""; b.l = bj["max"] | ""; b.pluie = bj["pluie"] | -1; }
