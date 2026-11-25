@@ -17,6 +17,7 @@ void chargerReglages() {
   R.serveur = P.getString("serveur", R.serveur);
   R.code = P.getString("code", R.code);
   R.style = P.getString("style", R.style);
+  if (R.style == "hacker") R.style = "pote";   // personnalité retirée
   R.voix = P.getString("voix", R.voix);
   R.debit = P.getFloat("debit", R.debit);
   R.couleur = P.getUInt("couleur", R.couleur);

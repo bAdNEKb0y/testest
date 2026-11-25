@@ -423,11 +423,10 @@ static const Perso PERSOS[] = {
   {"sarcastique", "Le sarcastique", "Oh, génial. Encore un changement de personnalité.", 0xA78BFA},
   {"prof", "Le prof", "Bien, on reprend la leçon. Qui a une question ?", 0x4ADE80},
   {"coach", "Le coach sportif", "Allez, on se bouge ! Dix pompes et on en parle !", 0xFFA94D},
-  {"hacker", "Le hacker", "Accès autorisé. Système en ligne. Bienvenue dans la matrice.", 0x39FF6A},
   {"zen", "Le zen", "Respire. Tout va bien. Je suis là.", 0x8EC5FF},
   {"pirate", "Le pirate", "Mille sabords, moussaillon ! On lève l'ancre !", 0xFFD43B},
 };
-static void appliquerTheme() { ui::modeHacker(R.style == "hacker"); }
+static void appliquerTheme() {}
 static void personnaliteSuivante() {
   int n = sizeof(PERSOS) / sizeof(PERSOS[0]), i = 0;
   for (int k = 0; k < n; k++) if (R.style == PERSOS[k].id) i = k;

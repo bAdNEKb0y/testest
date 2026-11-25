@@ -272,10 +272,7 @@ static bool dansPalette(int x, int y, int &choix) {   // 6 couleurs, la gomme, t
 }
 static float testMicro = 0, testMicroMax = 0;
 static int testX = -1, testY = -1;
-static bool musiqueOn = false, aubeOn = false, hackerOn = false;
-static float pluieY[21];
-static uint8_t pluieV[21];
-static char pluieC[21][10];
+static bool musiqueOn = false, aubeOn = false;
 static uint32_t aubeDebut = 0;
 static float barres[48];
 
@@ -494,12 +491,6 @@ void ui::attacherImage(uint32_t id, const String &imgId, uint16_t *px, int w, in
 }
 
 void ui::musique(bool on) { musiqueOn = on; }
-void ui::modeHacker(bool on) {
-  VERROU;
-  if (on && !hackerOn)
-    for (int i = 0; i < 21; i++) { pluieY[i] = -(float)(esp_random() % 400); pluieV[i] = 2 + esp_random() % 4; for (int k = 0; k < 10; k++) pluieC[i][k] = "01ABCDEF#$%&*+<>/\\=?XZ"[esp_random() % 22]; }
-  hackerOn = on;
-}
 void ui::niveauTest(float v) { testMicro = v; testMicroMax = std::max(testMicroMax * 0.995f, v); }
 void ui::aube(bool on) { VERROU; if (on && !aubeOn) aubeDebut = millis(); aubeOn = on; }
 void ui::attenteImage() { VERROU; photoAttenteDepuis = millis(); }
@@ -1120,27 +1111,6 @@ void ui::dessiner(uint32_t m) {
       uint16_t c = f < 0.5f ? melange(0x2000, 0xFB40, f * 2) : melange(0xFB40, 0xFE60, (f - 0.5f) * 2);
       g->fillCircle(CENTRE, CENTRE + 60, (R + 40) * (1 - f * 0.8f) * (0.7f + 0.3f * pa), attenue(c, pa * (0.35f + 0.65f * f)));
     }
-  }
-  // mode hacker : pluie de caractères verts et petits messages qui défilent (pour le style, rien de réel)
-  if (hackerOn) {
-    g->setFont(F_PETIT);
-    for (int i = 0; i < 21; i++) {
-      pluieY[i] += pluieV[i] * 1.6f;
-      if (pluieY[i] > ECRAN + 160) { pluieY[i] = -(float)(esp_random() % 200); pluieV[i] = 2 + esp_random() % 4; }
-      if (esp_random() % 6 == 0) pluieC[i][esp_random() % 10] = "01ABCDEF#$%&*+<>/=?XZ"[esp_random() % 21];
-      int x = 12 + i * 21;
-      for (int k = 0; k < 10; k++) {
-        int y = (int)pluieY[i] - k * 16;
-        if (y < 0 || y > ECRAN) continue;
-        uint16_t c = k == 0 ? 0x9FF3 : attenue(0x07E0, 0.42f * (1 - k / 10.f));
-        char t[2] = {pluieC[i][k], 0};
-        g->setTextColor(c); g->setCursor(x, y); g->print(t);
-      }
-    }
-    static const char *hud[] = {"> ACCES AUTORISE", "> SCAN DU RESEAU... 87%", "> CONNEXION SECURISEE", "> DECRYPTAGE EN COURS", "> SYSTEME EN LIGNE", "> NEXXUS v1.0 // ROOT"};
-    int h = (m / 2600) % 6;
-    float a = clampf(1 - fabsf(fmodf(m / 2600.f, 1.f) - 0.5f) * 2.2f, 0, 1);
-    if (!(carte && carteVisible)) texteCentre(F_PETIT, hud[h], CENTRE, 62, attenue(0x07E0, 0.35f + 0.65f * a));
   }
   float p = clampf((ECRAN - carteY) / (float)(ECRAN - HAUT_CARTE), 0, 1.2f);
   float pp = clampf(p, 0, 1);
