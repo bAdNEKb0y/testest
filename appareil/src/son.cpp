@@ -96,6 +96,14 @@ static bool demarrerI2S() {
 // ------------------------------------------------------------------ radio : le lecteur prend les broches I2S le temps de la musique
 static Audio *lecteur = nullptr;
 static volatile bool radioOn = false;
+static char titreFlux[160] = "";
+static portMUX_TYPE verrouTitre = portMUX_INITIALIZER_UNLOCKED;
+String audio::titreRadio() {
+  char t[160];
+  portENTER_CRITICAL(&verrouTitre); memcpy(t, titreFlux, sizeof t); portEXIT_CRITICAL(&verrouTitre);
+  t[sizeof t - 1] = 0;
+  return String(t);
+}
 static void tacheRadio(void *) {
   while (true) {
     if (radioOn && lecteur) { lecteur->loop(); vTaskDelay(1); }
@@ -107,9 +115,14 @@ bool audio::radio(const String &url) {
   xSemaphoreTakeRecursive(verrouI2S, portMAX_DELAY);
   if (!lecteur) {
     lecteur = new Audio(I2S_NUM_1);
+    Audio::audio_info_callback = [](Audio::msg_t m) {   // titre du morceau annoncé par la radio
+      if (m.e != Audio::evt_streamtitle || !m.msg) return;
+      portENTER_CRITICAL(&verrouTitre); strlcpy(titreFlux, m.msg, sizeof titreFlux); portEXIT_CRITICAL(&verrouTitre);
+    };
     xTaskCreatePinnedToCore(tacheRadio, "radio", 8192, nullptr, 4, nullptr, 0);
   }
   if (radioOn) lecteur->stopSong();
+  portENTER_CRITICAL(&verrouTitre); titreFlux[0] = 0; portEXIT_CRITICAL(&verrouTitre);
   i2s.end();
   lecteur->setPinout(I2S_BCLK, I2S_WS, I2S_DOUT, I2S_MCLK);
   lecteur->setVolume(21);

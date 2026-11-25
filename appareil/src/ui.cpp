@@ -33,6 +33,10 @@ namespace ui {
 void (*surParler)() = nullptr;
 void (*surChoix)(const String &) = nullptr;
 void (*surBouton)(const String &) = nullptr;
+void (*surCase)(const String &, bool) = nullptr;
+void (*surRevision)(const String &, bool) = nullptr;
+String (*titreMusique)() = nullptr;
+int recordTables = 0;
 void (*surImage)(const String &, const String &) = nullptr;
 uint16_t *(*tampon)() = nullptr;
 void (*surZoom)(int) = nullptr;
@@ -160,6 +164,7 @@ static int hauteurLigne(const uint8_t *p) {
   if (p == F_TITRE) return 28;
   if (p == F_GRAND) return 33;
   if (p == F_HORLOGE) return 88;
+  if (p == F_TEMP) return 68;
   return 30;
 }
 
@@ -216,7 +221,7 @@ static void ciblesPour(Humeur h) {
 }
 
 // ------------------------------------------------------------------ cartes
-enum TypeElem : uint8_t { E_TEXTE, E_IMAGE, E_PILULE, E_BADGE, E_ICONE, E_SEP, E_QR, E_RANG };
+enum TypeElem : uint8_t { E_TEXTE, E_IMAGE, E_PILULE, E_BADGE, E_ICONE, E_SEP, E_QR, E_RANG, E_CASE };
 struct Elem {
   TypeElem t;
   int x, y, w, h;
@@ -252,6 +257,33 @@ static int lampeCouleur = 0;
 static bool chronoMarche = false;
 static uint32_t chronoDepart = 0, chronoCumul = 0;
 static uint32_t respDebut = 0;
+// tables de multiplication : 60 secondes pour répondre au plus de calculs
+static int tabTable = 0, tabA = 0, tabB = 0, tabRep[4], tabBonne = 0, tabScore = 0, tabErreurs = 0, tabDernier = -1;
+static uint32_t tabDebut = 0, tabFlash = 0;
+static bool tabFini = false;
+static void tabQuestion() {
+  int a = tabTable ? tabTable : 2 + esp_random() % 9, b = 2 + esp_random() % 9;
+  if (a == tabA && b == tabB) b = b == 10 ? 2 : b + 1;
+  tabA = a; tabB = b;
+  int juste = a * b, n = 1;
+  tabBonne = esp_random() % 4;
+  int pistes[8] = {juste + a, juste - a, juste + b, juste - b, juste + 1, juste - 1, juste + 10, juste - 10};
+  int faux[3];
+  for (int i = 0; i < 8 && n < 4; i++) {
+    int v = pistes[(i + esp_random() % 8) % 8];
+    bool deja = v <= 0 || v == juste;
+    for (int k = 0; k < n - 1; k++) if (faux[k] == v) deja = true;
+    if (!deja) faux[n++ - 1] = v;
+  }
+  while (n < 4) { faux[n - 1] = juste + n * 2; n++; }
+  for (int i = 0, k = 0; i < 4; i++) tabRep[i] = i == tabBonne ? juste : faux[k++];
+}
+void ui::tables(int table) { tabTable = constrain(table, 0, 12); tabDebut = 0; tabFini = false; tabScore = tabErreurs = 0; tabDernier = -1; }
+// blind test : 20 secondes d'écoute, puis la réponse
+static uint32_t btDebut = 0;
+static bool btRevele = false;
+static int btScore = 0, btTours = 0, btReponse = -1;
+static String btTitre;
 // dessin au doigt : une feuille de 466 x 466 gardée en mémoire tant que la carte est ouverte
 static uint16_t *feuille = nullptr;
 static int crayon = 0, crayonX = -1, crayonY = -1;
@@ -300,13 +332,14 @@ static void miseEnPage() {
         // espaces entre les blocs
         if (b.k == B_TITRE || b.k == B_IMAGE || b.k == B_METEO || b.k == B_CHOIX) p.hauteur += 12;
         else if (b.k == B_TEXTE && prec != B_SOUS) p.hauteur += 8;
-        else if ((b.k == B_LIGNE || b.k == B_DEPART || b.k == B_JOUR) && prec != b.k) p.hauteur += 12;
+        else if ((b.k == B_LIGNE || b.k == B_DEPART || b.k == B_JOUR || b.k == B_CASE) && prec != b.k) p.hauteur += 12;
+        else if (b.k == B_REPONSE) p.hauteur += 16;
         else if (b.k == B_SOUS) p.hauteur += 6;
       }
       premier = false;
       prec = b.k;
       switch (b.k) {
-        case B_TITRE: ajouterTexte(p, (carte->type == "reveil" || carte->type == "decompte") ? F_HORLOGE : F_TITRE, b.t, carte->type == "decompte" ? accent : BLANC, 4); break;
+        case B_TITRE: ajouterTexte(p, (carte->type == "reveil" || carte->type == "decompte") ? F_HORLOGE : carte->type == "hasard" ? F_TEMP : F_TITRE, b.t, (carte->type == "decompte" || carte->type == "hasard") ? accent : BLANC, 4); break;
         case B_SOUS: ajouterTexte(p, F_SOUS, b.t, accent, 2); break;
         case B_TEXTE: ajouterTexte(p, b.fort ? F_FORT : F_TEXTE, b.t, b.fort ? BLANC : GRIS_CLAIR); break;
         case B_PETIT: ajouterTexte(p, F_PETIT, b.t, GRIS, 4); break;
@@ -399,6 +432,35 @@ static void miseEnPage() {
           p.hauteur += 58;
           break;
         }
+        case B_CASE: {   // tâche à cocher : on touche la ligne
+          auto lignes = couper(F_TEXTE, b.t, COL_W - 64, 2);
+          int h = lignes.size() > 1 ? 58 : 40;
+          Elem e{E_CASE, COL_X + 12, p.hauteur, COL_W - 24, h};
+          e.s = lignes[0]; e.s2 = lignes.size() > 1 ? lignes[1] : ""; e.bloc = &b;
+          p.elems.push_back(e);
+          p.hauteur += h + 6;
+          break;
+        }
+        case B_REPONSE: {  // carte de révision : la réponse est cachée jusqu'au toucher
+          if (!b.fort) {
+            Elem e{E_PILULE, CENTRE - 120, p.hauteur, 240, 48};
+            e.s = "Voir la réponse"; e.bloc = &b; e.code = -2;
+            p.elems.push_back(e);
+            p.hauteur += 58;
+          } else {
+            ajouterTexte(p, F_FORT, b.t, accent, 6);
+            p.hauteur += 12;
+            if (b.n == 0) {
+              Elem oui{E_PILULE, CENTRE - 136, p.hauteur, 130, 48};
+              oui.s = "Je savais"; oui.bloc = &b; oui.code = -3;
+              Elem non{E_PILULE, CENTRE + 6, p.hauteur, 130, 48};
+              non.s = "À revoir"; non.bloc = &b; non.code = -4;
+              p.elems.push_back(oui); p.elems.push_back(non);
+              p.hauteur += 58;
+            } else ajouterTexte(p, F_PETIT, b.n == 1 ? "Bravo ! Glisse pour la suivante" : "On la reverra. Glisse pour la suivante", GRIS, 2);
+          }
+          break;
+        }
       }
     }
     p.hauteur += 24;
@@ -461,6 +523,10 @@ void ui::montrerCarte(Carte *c) {
   if (!carteVisible) { carteVisible = true; if (!memeType) carteY = ECRAN; nbCartesVues++; }
   carteOuverteA = derniereAction = millis();
   if (c->type == "respiration") respDebut = 0;
+  if (c->type == "blindtest") {
+    if (millis() - btDebut > 15 * 60000) btScore = btTours = 0;   // nouvelle partie
+    btDebut = millis(); btRevele = false; btReponse = -1; btTitre = "";
+  }
 }
 
 void ui::fermerCarte() {
@@ -536,6 +602,26 @@ static void tape(int x, int y) {
     if (y > 348 && ui::surBouton) ui::surBouton("test_son");
     return;
   }
+  if (carte->type == "tables") {
+    uint32_t mm = millis();
+    if (!tabDebut || (tabFini && mm - tabDebut > 61000)) { tabDebut = mm; tabFini = false; tabScore = tabErreurs = 0; tabDernier = -1; tabQuestion(); return; }
+    if (tabFini) return;
+    int top = HAUT_CARTE;
+    if (y < top + 150) return;
+    int col = x < CENTRE ? 0 : 1, lig = y < top + 218 ? 0 : 1, i = lig * 2 + col;
+    tabDernier = i == tabBonne ? 1 : 0;
+    tabFlash = mm;
+    if (tabDernier) tabScore++; else tabErreurs++;
+    tabQuestion();
+    return;
+  }
+  if (carte->type == "blindtest") {
+    if (!btRevele) { btRevele = true; btTitre = ui::titreMusique ? ui::titreMusique() : String(""); return; }
+    int top = HAUT_CARTE;
+    if (btReponse < 0 && y > top + 196 && y < top + 250) { btReponse = x < CENTRE ? 1 : 0; btTours++; btScore += btReponse; return; }
+    if (btReponse >= 0 && y > top + 196 && y < top + 250) { if (ui::surBouton) ui::surBouton("blindtest_encore"); return; }
+    return;
+  }
   if (carte->type == "chrono") {
     if (y > 330 && !chronoMarche && chronoCumul) { chronoCumul = 0; return; }   // « remettre à zéro »
     if (chronoMarche) { chronoCumul += millis() - chronoDepart; chronoMarche = false; }
@@ -550,9 +636,22 @@ static void tape(int x, int y) {
         if (ui::surImage) { photoAttenteDepuis = millis(); ui::surImage(e.bloc->id, e.bloc->l); }
         return;
       }
+      if (e.t == E_CASE && x >= e.x - 10 && x <= e.x + e.w && y >= ey - 3 && y <= ey + e.h + 3) {
+        Bloc *b = const_cast<Bloc *>(e.bloc);
+        b->fort = !b->fort;
+        if (ui::surCase) ui::surCase(b->id, b->fort);
+        return;
+      }
       if (e.t != E_PILULE) continue;
       if (x >= e.x && x <= e.x + e.w && y >= ey && y <= ey + e.h) {
-        if (e.code < 0) { if (ui::surBouton) ui::surBouton(e.bloc->id); return; }
+        if (e.code == -1) { if (ui::surBouton) ui::surBouton(e.bloc->id); return; }
+        if (e.code <= -2) {
+          Bloc *b = const_cast<Bloc *>(e.bloc);
+          if (e.code == -2) b->fort = true;
+          else { b->n = e.code == -3 ? 1 : 2; if (ui::surRevision) ui::surRevision(b->id, b->n == 1); }
+          miseSale = true;
+          return;
+        }
         String choix = e.bloc->items[e.code];
         choixFait = choix;
         e.choisi = true;
@@ -923,6 +1022,17 @@ static void dessinerPage(int idx, int dx, int base) {
         texteCentre(F_SOUS, e.s2, x, y + 114, GRIS);
         break;
       case E_QR: qr(e.s, x, y, e.w); break;
+      case E_CASE: {
+        bool fait = e.bloc && e.bloc->fort;
+        g->fillRoundRect(x, y + 6, 28, 28, 8, fait ? accent : 0x10A2);
+        if (!fait) g->drawRoundRect(x, y + 6, 28, 28, 8, attenue(accent, 0.8f));
+        else for (int k = 0; k < 3; k++) { g->drawLine(x + 6, y + 19 + k, x + 12, y + 25 + k, NOIR); g->drawLine(x + 12, y + 25 + k, x + 22, y + 13 + k, NOIR); }
+        uint16_t ct = fait ? GRIS : BLANC;
+        texte(F_TEXTE, e.s, x + 42, y + 27, ct);
+        if (e.s2.length()) texte(F_TEXTE, e.s2, x + 42, y + 52, ct);
+        if (fait) g->drawFastHLine(x + 40, y + 21, std::min(largeur(F_TEXTE, e.s) + 4, e.w - 40), GRIS);
+        break;
+      }
     }
   }
 }
@@ -1052,7 +1162,7 @@ void ui::dessiner(uint32_t m) {
   }
   // fermeture automatique quand on ne s'en sert plus
   if (carte && carteVisible && !appui && act != A_PARLE && act != A_ECOUTE && act != A_REFLECHIT) {
-    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "dessin" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche);
+    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "dessin" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche) || carte->type == "tables" || carte->type == "blindtest";
     uint32_t delai = garde ? 0 : (carte->type == "heure" ? 25000 : 60000);
     if (delai && m - derniereAction > delai) carteVisible = false;
   }
@@ -1156,6 +1266,75 @@ void ui::dessiner(uint32_t m) {
       g->fillRoundRect(CENTRE - 90, 352, 180, 40, 20, 0x10A2);
       g->drawRoundRect(CENTRE - 90, 352, 180, 40, 20, attenue(accent, 0.7f));
       texteCentre(F_TEXTE, "Tester le son", CENTRE, 379, BLANC);
+    } else if (carte->type == "tables") {
+      auto bouton = [&](int bx, int by, int bw, int bh, const String &t, uint16_t fond) {
+        g->fillRoundRect(bx, by, bw, bh, 18, fond);
+        if (fond == 0x10A2) g->drawRoundRect(bx, by, bw, bh, 18, attenue(accent, 0.7f));
+        texteCentre(F_GRAND, t, bx + bw / 2, by + bh / 2 + 12, BLANC);
+      };
+      uint32_t ecoule = tabDebut ? m - tabDebut : 0;
+      if (tabDebut && !tabFini && ecoule >= 60000) {
+        tabFini = true;
+        if (tabScore > recordTables) { recordTables = tabScore; if (ui::surBouton) ui::surBouton("record_tables"); }
+      }
+      if (!tabDebut) {
+        texteCentre(F_SOUS, tabTable ? String("Table de ") + tabTable : String("Toutes les tables"), CENTRE, top + 44, accent);
+        texteCentre(F_TITRE, "Tables de", CENTRE, top + 82, BLANC);
+        texteCentre(F_TITRE, "multiplication", CENTRE, top + 110, BLANC);
+        texteCentre(F_TEXTE, "60 secondes pour en réussir", CENTRE, top + 146, GRIS_CLAIR);
+        texteCentre(F_TEXTE, "le plus possible", CENTRE, top + 170, GRIS_CLAIR);
+        if (recordTables) texteCentre(F_SOUS, String("Record : ") + recordTables, CENTRE, top + 200, GRIS);
+        bouton(CENTRE - 100, top + 216, 200, 48, "", accent);
+        texteCentre(F_FORT, "C'est parti !", CENTRE, top + 247, NOIR);
+      } else if (tabFini) {
+        texteCentre(F_SOUS, "Temps écoulé !", CENTRE, top + 52, accent);
+        texteCentre(F_TEMP, String(tabScore), CENTRE, top + 132, BLANC);
+        texteCentre(F_TEXTE, tabScore > 1 ? "bonnes réponses" : "bonne réponse", CENTRE, top + 166, GRIS_CLAIR);
+        texteCentre(F_SOUS, tabScore >= recordTables && tabScore ? String("Nouveau record !") : String("Record : ") + recordTables, CENTRE, top + 200, tabScore >= recordTables && tabScore ? 0xFE60 : GRIS);
+        if (tabErreurs) texteCentre(F_PETIT, String(tabErreurs) + (tabErreurs > 1 ? " erreurs" : " erreur"), CENTRE, top + 224, GRIS);
+        if (ecoule > 61000) texteCentre(F_PETIT, "touche pour rejouer", CENTRE, top + 262, GRIS);
+      } else {
+        float reste = (60000 - (float)ecoule) / 60000.f;
+        g->fillArc(CENTRE, CENTRE, R - 3, R - 9, -90, -90 + 360 * reste, reste < 0.2f ? 0xFA6F : attenue(accent, 0.8f));
+        texte(F_SOUS, String("Score ") + tabScore, CENTRE - 104, top + 40, GRIS_CLAIR);
+        String sec = String((60000 - ecoule) / 1000 + 1) + " s";
+        texte(F_SOUS, sec, CENTRE + 104 - largeur(F_SOUS, sec), top + 40, reste < 0.2f ? 0xFA6F : GRIS_CLAIR);
+        uint16_t cq = BLANC;
+        if (tabDernier >= 0 && m - tabFlash < 350) cq = tabDernier ? 0x4F50 : 0xFA6F;
+        texteCentre(F_TEMP, String(tabA) + " x " + tabB, CENTRE, top + 120, cq);
+        for (int i = 0; i < 4; i++) bouton(i % 2 ? CENTRE + 6 : CENTRE - 136, top + 152 + (i / 2) * 66, 130, 56, String(tabRep[i]), 0x10A2);
+      }
+    } else if (carte->type == "blindtest") {
+      uint32_t ecoule = m - btDebut;
+      if (!btRevele && ecoule > 20000) { btRevele = true; btTitre = ui::titreMusique ? ui::titreMusique() : String(""); }
+      texteCentre(F_SOUS, btTours ? String("Blind test · ") + btScore + " / " + btTours : String("Blind test"), CENTRE, top + 46, accent);
+      if (!btRevele) {
+        texteCentre(F_TITRE, "Qui chante ?", CENTRE, top + 84, BLANC);
+        texteCentre(F_HORLOGE, String((20000 - ecoule) / 1000 + 1), CENTRE, top + 178, BLANC);
+        for (int i = 0; i < 9; i++) {   // égaliseur qui danse
+          float h = 8 + 26 * fabsf(sinf(m * (0.004f + i * 0.0011f) + i));
+          g->fillRoundRect(CENTRE - 76 + i * 18, top + 232 - (int)h, 10, (int)h, 4, attenue(accent, 0.5f + 0.5f * h / 34));
+        }
+        texteCentre(F_PETIT, "dis ta réponse, puis touche pour voir", CENTRE, top + 262, GRIS);
+      } else {
+        String t = btTitre;
+        t.trim();
+        texteCentre(F_PETIT, "C'était", CENTRE, top + 78, GRIS);
+        if (!t.length()) t = "La radio n'a pas donné le titre";
+        auto lignes = couper(F_FORT, t, 300, 3);
+        int y0 = top + 108;
+        for (auto &l : lignes) { texteCentre(F_FORT, l, CENTRE, y0, BLANC); y0 += 26; }
+        if (btReponse < 0) {
+          g->fillRoundRect(CENTRE - 136, top + 196, 130, 48, 24, 0x4F50);
+          texteCentre(F_FORT, "Trouvé !", CENTRE - 71, top + 227, NOIR);
+          g->fillRoundRect(CENTRE + 6, top + 196, 130, 48, 24, 0x10A2);
+          g->drawRoundRect(CENTRE + 6, top + 196, 130, 48, 24, attenue(accent, 0.7f));
+          texteCentre(F_FORT, "Raté", CENTRE + 71, top + 227, BLANC);
+        } else {
+          g->fillRoundRect(CENTRE - 110, top + 196, 220, 48, 24, accent);
+          texteCentre(F_FORT, "Morceau suivant", CENTRE, top + 227, NOIR);
+        }
+      }
     } else if (carte->type == "respiration") {
       // 4 s on inspire, 4 s on garde, 6 s on expire
       if (!respDebut) respDebut = m;

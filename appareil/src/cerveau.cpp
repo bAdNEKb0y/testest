@@ -14,6 +14,7 @@ void (*surAnnulerMinuteurs)() = nullptr;
 void (*surCarteLocale)(const String &) = nullptr;
 void (*surPlan)(const String &, const String &, bool, int) = nullptr;
 void (*surRadio)(const String &, const String &) = nullptr;
+void (*surBlindTest)(const String &) = nullptr;
 void (*surStopRadio)() = nullptr;
 void (*surAlarmesChangees)() = nullptr;
 }
@@ -51,6 +52,7 @@ static void tacheSon(void *) {
   }
 }
 
+static String langueVoix;   // traduction : la voix lit aussi la langue étrangère
 static std::vector<String> decouper(const String &t) {
   std::vector<String> morceaux;
   String cur;
@@ -86,6 +88,7 @@ static bool parlerTexte(const String &texte, uint32_t gen, std::function<void()>
     d["voix"] = R.voix;
     d["debit"] = R.debit;
     d["format"] = "pcm";
+    if (langueVoix.length()) d["langue"] = langueVoix;
     String corps;
     serializeJson(d, corps);
     Tampon t;
@@ -168,6 +171,8 @@ static Carte *construireCarte(JsonObject e, std::vector<String> &images) {
         b.c = couleurHex(bj["c"] | "", 0x371F); b.ct = couleurHex(bj["ct"] | "", 0);
       }
       else if (k == "meteo") { b.k = B_METEO; b.code = bj["code"] | 0; b.t = bj["temp"] | ""; b.l = bj["info"] | ""; }
+      else if (k == "case") { b.k = B_CASE; b.id = bj["id"] | ""; b.fort = bj["fait"] | false; }
+      else if (k == "reponse") { b.k = B_REPONSE; b.id = bj["id"] | ""; }
       else if (k == "jour") { b.k = B_JOUR; b.t = bj["j"] | ""; b.code = bj["code"] | 0; b.v = bj["min"] | ""; b.l = bj["max"] | ""; b.pluie = bj["pluie"] | -1; }
       else { b.k = B_TEXTE; b.fort = bj["fort"] | false; }
       page.push_back(b);
@@ -230,6 +235,7 @@ static void reflechir(const String &texte, uint32_t gen) {
   String titre = ui::titreCarte();
   if (titre.length()) req["fiche_ouverte"] = titre;
   if (jeuSecret.length()) req["jeu_secret"] = jeuSecret;
+  if (ui::typeCarte() == "blindtest") req["blindtest"] = audio::titreRadio().length() ? audio::titreRadio() : String("(titre inconnu)");
   String corps;
   serializeJson(req, corps);
   Tampon t;
@@ -244,17 +250,19 @@ static void reflechir(const String &texte, uint32_t gen) {
   historique.push_back({"assistant", reponse});
   while (historique.size() > 10) historique.erase(historique.begin());
   jeuSecret = r["jeu_secret"] | "";
+  langueVoix = r["langue"] | "";
   etat = "prêt";
 
   Humeur h = humeurDe(r["humeur"] | "neutre");
   ui::humeur(h, h == H_NEUTRE ? 0 : 6000 + reponse.length() * 55);
   String radioApres, radioNom;
+  bool blindTest = false;
   for (JsonObject a : r["actions"].as<JsonArray>()) {
     String type = a["type"] | "";
     if (type == "minuteur" && cerveau::surMinuteur) cerveau::surMinuteur(a["secondes"] | 60, a["nom"] | "Minuteur");
     else if (type == "annuler_minuteurs" && cerveau::surAnnulerMinuteurs) cerveau::surAnnulerMinuteurs();
     else if (type == "carte" && cerveau::surCarteLocale) cerveau::surCarteLocale(a["quoi"] | "appareil");
-    else if (type == "musique" && cerveau::surRadio) radioApres = a["url"] | "", radioNom = a["nom"] | "Radio";
+    else if (type == "musique" && cerveau::surRadio) { radioApres = a["url"] | ""; radioNom = a["nom"] | "Radio"; blindTest = String(a["jeu"] | "") == "blindtest"; }
     else if (type == "stop_musique" && cerveau::surStopRadio) cerveau::surStopRadio();
     else if (type == "alarmes" && cerveau::surAlarmesChangees) cerveau::surAlarmesChangees();
     else if (type == "plan" && cerveau::surPlan) cerveau::surPlan(a["id"] | "", a["titre"] | "", a["centre"] | false, a["zoom"] | 15);
@@ -274,7 +282,10 @@ static void reflechir(const String &texte, uint32_t gen) {
     // la radio démarre une fois l'annonce finie
     uint32_t t0 = millis();
     while ((sonsEnAttente > 0 || production) && gen == generation && millis() - t0 < 30000) vTaskDelay(pdMS_TO_TICKS(50));
-    if (gen == generation) cerveau::surRadio(radioApres, radioNom);
+    if (gen == generation) {
+      if (blindTest && cerveau::surBlindTest) cerveau::surBlindTest(radioApres);
+      else cerveau::surRadio(radioApres, radioNom);
+    }
   }
 }
 

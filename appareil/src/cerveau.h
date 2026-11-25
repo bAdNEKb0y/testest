@@ -18,5 +18,6 @@ namespace cerveau {
   extern void (*surPlan)(const String &id, const String &titre, bool centre, int zoom);
   extern void (*surRadio)(const String &url, const String &nom);
   extern void (*surStopRadio)();
+  extern void (*surBlindTest)(const String &url);
   extern void (*surAlarmesChangees)();
 }

@@ -17,5 +17,6 @@ namespace audio {
   void radioStop();
   bool radioActive();
   float niveauRadio();
+  String titreRadio();         // « Artiste - Titre » annoncé par la radio (vide si inconnu)
   float mesurerMicro(int ms);   // niveau du micro (0..1) pendant ms millisecondes, pour le mode test
 }

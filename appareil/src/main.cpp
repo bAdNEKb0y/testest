@@ -217,10 +217,18 @@ static void tacheRappels(void *) {
     if (reseau::connecte() && R.serveur.length() && R.code.length()) peutEtreProposer();
     String *fait;
     if (xQueueReceive(fileRappelsFaits, &fait, pdMS_TO_TICKS(1000)) == pdTRUE) {
-      bool alarme = fait->startsWith("A:");
-      String corps = "{\"id\":\"" + (alarme ? fait->substring(2) : *fait) + "\"}";
       Tampon t;
-      relais(alarme ? "alarme_faite" : "rappel_fait", "POST", "application/json", (const uint8_t *)corps.c_str(), corps.length(), t, 15000);
+      if (fait->startsWith("{")) {   // envoi déjà prêt : {"action":..., ...}
+        JsonDocument d;
+        if (!deserializeJson(d, *fait)) {
+          String action = d["action"] | "";
+          relais(action.c_str(), "POST", "application/json", (const uint8_t *)fait->c_str(), fait->length(), t, 15000);
+        }
+      } else {
+        bool alarme = fait->startsWith("A:");
+        String corps = "{\"id\":\"" + (alarme ? fait->substring(2) : *fait) + "\"}";
+        relais(alarme ? "alarme_faite" : "rappel_fait", "POST", "application/json", (const uint8_t *)corps.c_str(), corps.length(), t, 15000);
+      }
       delete fait;
       dernier = 0;
     }
@@ -444,8 +452,22 @@ static void personnaliteSuivante() {
   else ui::sousTitre(p.phrase, 3000);
 }
 
+// envois au serveur sans bloquer l'écran (tâche cochée, carte de révision) : passent par la tâche des rappels
+static void envoyer(JsonDocument &d) {
+  if (!fileRappelsFaits) return;
+  String *corps = new String();
+  serializeJson(d, *corps);
+  if (xQueueSend(fileRappelsFaits, &corps, 0) != pdTRUE) delete corps;
+}
+static void carteJeu(const char *type) {
+  Carte *c = new Carte();
+  c->type = type; c->locale = true;
+  c->pages.push_back({bloc(B_TITRE, type)});
+  ui::montrerCarte(c);
+}
 static void carteLocale(const String &quoi) {
-  if (quoi == "heure") carteHeure();
+  if (quoi.startsWith("tables")) { ui::tables(quoi.indexOf(':') > 0 ? quoi.substring(quoi.indexOf(':') + 1).toInt() : 0); carteJeu("tables"); }
+  else if (quoi == "heure") carteHeure();
   else if (quoi == "lampe" || quoi == "chrono" || quoi == "respiration" || quoi == "test" || quoi == "dessin") carteOutil(quoi.c_str());
   else carteAppareil();
 }
@@ -611,6 +633,23 @@ void setup() {
     else if (id == "encore_reveil") finReveil(true);
     else if (id == "stop_radio") { audio::radioStop(); ui::fermerCarte(); }
     else if (id == "test_son") testSon = true;
+    else if (id == "record_tables") { Preferences pr; pr.begin("jeux", false); pr.putInt("tables", ui::recordTables); pr.end(); }
+    else if (id == "blindtest_encore") cerveau::question("Encore un blind test !");
+  };
+  ui::surCase = [](const String &id, bool coche) {
+    JsonDocument d; d["action"] = "tache_cochee"; d["id"] = id; d["fait"] = coche;
+    envoyer(d);
+    if (coche) audio::bip(1568, 40, 0.15f);
+  };
+  ui::surRevision = [](const String &id, bool su) {
+    JsonDocument d; d["action"] = "revision_resultat"; d["id"] = id; d["su"] = su;
+    envoyer(d);
+  };
+  ui::titreMusique = audio::titreRadio;
+  { Preferences pr; pr.begin("jeux", true); ui::recordTables = pr.getInt("tables", 0); pr.end(); }
+  cerveau::surBlindTest = [](const String &url) {
+    if (audio::radio(url)) { carteJeu("blindtest"); ui::humeur(H_CONTENT, 3000); }
+    else ui::sousTitre("Cette radio ne veut pas démarrer, redemande-moi un blind test.", 4000);
   };
   cerveau::surRadio = [](const String &url, const String &nom) {
     if (audio::radio(url)) { carteRadio(nom); ui::humeur(H_CONTENT, 4000); }
