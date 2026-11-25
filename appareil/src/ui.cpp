@@ -599,8 +599,73 @@ void ui::toucher(int x, int y, bool presse, uint32_t t) {
 }
 
 // ------------------------------------------------------------------ dessin : visage
+// ------------------------------------------------------------------ dessin lissé (anticrénelage) : bords doux et vraie lueur
+// Chaque pixel calcule sa distance au bord de la forme : dedans = couleur pleine, sur le bord = mélange, dehors = halo qui s'estompe.
+static inline uint16_t mix565(uint16_t fond, uint16_t c, float a) {
+  if (a <= 0.004f) return fond;
+  if (a >= 0.996f) return c;
+  int k = (int)(a * 256);
+  int r = ((fond >> 11) * (256 - k) + (c >> 11) * k) >> 8;
+  int v = (((fond >> 5) & 63) * (256 - k) + ((c >> 5) & 63) * k) >> 8;
+  int b = ((fond & 31) * (256 - k) + (c & 31) * k) >> 8;
+  return (r << 11) | (v << 5) | b;
+}
+struct Coupe { bool active = false; float ax, ay, nx, ny; };  // demi-plan retiré (paupière)
+static Coupe coupeEntre(float x1, float y1, float x2, float y2, float gardeX, float gardeY) {
+  Coupe c;
+  float dx = x2 - x1, dy = y2 - y1, l = sqrtf(dx * dx + dy * dy);
+  if (l < 0.5f) return c;
+  c.active = true; c.ax = x1; c.ay = y1; c.nx = -dy / l; c.ny = dx / l;
+  if ((gardeX - x1) * c.nx + (gardeY - y1) * c.ny < 0) { c.nx = -c.nx; c.ny = -c.ny; }  // normale vers la partie gardée
+  return c;
+}
+static bool formeLisse(float cx, float cy, float w, float h, float r, uint16_t c, float lueur, float forceLueur,
+                       const Coupe *coupes = nullptr, int nCoupes = 0, float elX = 0, float elY = 0, float elRx = 0, float elRy = 0) {
+  uint16_t *fb = ui::tampon ? ui::tampon() : nullptr;
+  if (!fb) return false;
+  float hw = w / 2, hh = h / 2;
+  r = std::min(r, std::min(hw, hh));
+  int x0 = std::max(0, (int)floorf(cx - hw - lueur - 1)), x1 = std::min(ECRAN - 1, (int)ceilf(cx + hw + lueur + 1));
+  int y0 = std::max(0, (int)floorf(cy - hh - lueur - 1)), y1 = std::min(ECRAN - 1, (int)ceilf(cy + hh + lueur + 1));
+  float bx = hw - r, by = hh - r, invL = lueur > 0.5f ? 1.f / lueur : 0;
+  float mEl = std::min(elRx, elRy);
+  for (int y = y0; y <= y1; y++) {
+    uint16_t *ligne = fb + y * ECRAN;
+    float py = y + 0.5f - cy, qy = fabsf(py) - by;
+    for (int x = x0; x <= x1; x++) {
+      float px = x + 0.5f - cx, qx = fabsf(px) - bx;
+      float ox = qx > 0 ? qx : 0, oy = qy > 0 ? qy : 0;
+      float d = sqrtf(ox * ox + oy * oy) + std::min(std::max(qx, qy), 0.f) - r;
+      for (int k = 0; k < nCoupes; k++)
+        if (coupes[k].active) d = std::max(d, -((x + 0.5f - coupes[k].ax) * coupes[k].nx + (y + 0.5f - coupes[k].ay) * coupes[k].ny));
+      if (elRx > 0.5f) {
+        float ex = (x + 0.5f - elX) / elRx, ey = (y + 0.5f - elY) / elRy;
+        d = std::max(d, -(sqrtf(ex * ex + ey * ey) - 1) * mEl);
+      }
+      float a;
+      if (d <= -0.5f) a = 1;
+      else if (d < 0.5f) { float cov = 0.5f - d; float t = 1 - (d + 0.5f) * invL; a = cov + (1 - cov) * forceLueur * (t > 0 ? t * t : 0); }
+      else { float t = 1 - d * invL; if (t <= 0) continue; a = forceLueur * t * t; }
+      ligne[x] = mix565(ligne[x], c, a);
+    }
+  }
+  return true;
+}
+
 static void oeil(float ex, float ey, float ew, float eh, float r, uint16_t c, float s, bool gaucheOeil) {
   if (eh < 2) eh = 2;
+  {
+    // version lissée : bords nets mais doux, halo progressif, paupières sans escaliers
+    float lueur = 16 * s, top = ey - eh / 2, gx = ex - ew / 2 - lueur - 2, dxx = ex + ew / 2 + lueur + 2;
+    float ext = gaucheOeil ? gx : dxx, inter = gaucheOeil ? dxx : gx, haut = top - lueur - 2;
+    Coupe cp[2];
+    if (vis.tExt > 0.02f) cp[0] = coupeEntre(inter, haut, ext, top + vis.tExt * eh * 1.25f, ex, ey + eh / 2);
+    if (vis.tInt > 0.02f) cp[1] = coupeEntre(ext, haut, inter, top + vis.tInt * eh * 1.25f, ex, ey + eh / 2);
+    float k = vis.joue / 0.42f;
+    bool rieur = vis.joue > 0.02f;
+    if (formeLisse(ex, ey, ew, eh, std::min(r, std::min(ew, eh) / 2), c, lueur, 0.30f, cp, 2,
+                   ex, ey + eh * 0.62f, rieur ? ew * 0.62f + 7 * s : 0, rieur ? std::max(1.f, eh * 0.62f * k) : 0)) return;
+  }
   r = std::min(r, std::min(ew, eh) / 2);
   float lueur = 7 * s;
   g->fillRoundRect(ex - ew / 2 - lueur, ey - eh / 2 - lueur, ew + 2 * lueur, eh + 2 * lueur, r + lueur, attenue(c, 0.16f));
@@ -642,7 +707,8 @@ static void visage(float cx, float cy, float s, uint32_t m) {
   float by = cy + 104 * s;
   if (act == A_PARLE) {
     float h = (8 + 44 * niveauLisse) * s, w = (52 - 8 * niveauLisse) * s;
-    g->fillRoundRect(cx - w / 2, by - h / 2, w, h, std::min(w, h) / 2, attenue(c, 0.85f));
+    if (!formeLisse(cx, by, w, h, std::min(w, h) / 2, attenue(c, 0.85f), 8 * s, 0.25f))
+      g->fillRoundRect(cx - w / 2, by - h / 2, w, h, std::min(w, h) / 2, attenue(c, 0.85f));
   } else if (humeurActuelle == H_CONTENT || humeurActuelle == H_AMOUR) {
     g->fillArc(cx, by - 30 * s, 34 * s, 28 * s, 30, 150, attenue(c, 0.8f));
   } else if (humeurActuelle == H_SURPRIS) {
