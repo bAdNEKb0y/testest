@@ -330,7 +330,7 @@ static void miseEnPage() {
         }
         case B_CHOIX: {
           for (auto &it : b.items) {
-            auto lignes = couper(F_TEXTE, it, 250, 2);
+            auto lignes = couper(F_TEXTE, it, 228, 2);
             int h = lignes.size() > 1 ? 66 : 48;
             Elem e{E_PILULE, CENTRE - 140, p.hauteur, 280, h};
             e.s = lignes[0]; e.s2 = lignes.size() > 1 ? lignes[1] : ""; e.bloc = &b;
