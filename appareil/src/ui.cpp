@@ -310,7 +310,7 @@ static const App APPS[] = {
   {"jeuxvideo", "Jeux vidéo", 0x6A5F, "Montre mes jeux vidéo"}, {"tele", "Télé", 0x4A69, "Qu'est-ce qu'il y a à la télé ce soir ?"}, {"colis", "Colis", 0xB3A6, "Où en sont mes colis ?"},
   {"journal", "Journal", 0xE30F, "Je veux écrire dans mon journal"}, {"ephemeride", "Ce jour-là", 0xCC27, "Il s'est passé quoi un jour comme aujourd'hui ?"}, {"corvees", "Corvées", 0x2C8B, "Qui fait quoi cette semaine ?"},
   {"cadeaux", "Cadeaux", 0xF8B2, "Montre mes idées de cadeaux"}, {"essence", "Essence", 0x8410, "Où est l'essence la moins chère ?"},
-  {"wifi_invite", "Wi-Fi", 0x435C, ""}, {"appareil", "Réglages", 0x52AA, ""},
+  {"wifi_invite", "Wi-Fi", 0x435C, ""}, {"aide", "Aide", 0x5AEB, ""}, {"appareil", "Réglages", 0x52AA, ""},
 };
 static const int NB_APPS = sizeof(APPS) / sizeof(APPS[0]);
 static bool grille = false;
@@ -1509,6 +1509,7 @@ static void iconeApp(const char *id, int cx, int cy, float r) {
   else if (i == "defi") { g->fillTriangle(cx, cy - 16 * k, cx - 6 * k, cy - 2 * k, cx + 6 * k, cy - 2 * k, BLANC); C(0, 4, 8, true); }
   else if (i == "des") { Rr(-13, -13, 26, 26); C(-6, -6, 3, true); C(6, 6, 3, true); C(0, 0, 3, true); }
   else if (i == "wifi_invite") { for (int a = 0; a < 3; a++) g->fillArc(cx, cy + 10 * k, (8 + a * 7) * k, (5 + a * 7) * k, 225, 315, BLANC); C(0, 10, 3, true); }
+  else if (i == "aide") { C(0, 0, 17); if (k > 0.7f) texteCentre(F_FORT, "?", cx, cy + 8 * k, BLANC); else texteCentre(F_PETIT, "?", cx, cy + 5, BLANC); }
   else if (i == "calcul") { Rr(-14, -17, 28, 34); Rr(-9, -12, 18, 8, true); for (int a = 0; a < 3; a++) for (int b = 0; b < 2; b++) C(-6 + a * 6, 3 + b * 7, 2, true); }
   else if (i == "cadran") { C(0, 0, 17); L(0, 0, 0, -10); L(0, 0, 9, 0); for (int a = 0; a < 4; a++) { float an = a * 1.5708f; C(cosf(an) * 13, sinf(an) * 13, 1.5f, true); } }
   else if (i == "pendu") { L(-12, 16, 6, 16); L(-8, 16, -8, -16); L(-8, -16, 10, -16); L(10, -16, 10, -10); C(10, -4, 5); L(10, 1, 10, 10); }

@@ -479,11 +479,25 @@ static void carteJeu(const char *type) {
   c->pages.push_back({bloc(B_TITRE, type)});
   ui::montrerCarte(c);
 }
+// petit tutoriel : au tout premier démarrage, et depuis l'appli « Aide »
+static void carteTuto() {
+  Carte *c = new Carte();
+  c->type = "fiche"; c->locale = true;
+  c->pages.push_back({bloc(B_SOUS, "Bienvenue · 1/5"), bloc(B_TITRE, "Salut, je suis " + R.nom + " !"), bloc(B_TEXTE, "Je suis ton assistant. Je t'écoute, je te réponds et je fais les choses pour toi."), bloc(B_PETIT, "Glisse vers la gauche pour la suite")});
+  c->pages.push_back({bloc(B_SOUS, "Me parler · 2/5"), bloc(B_TITRE, "Touche mes yeux"), bloc(B_TEXTE, "Puis parle normalement. Par exemple :"),
+                      bloc(B_PUCE, "« Réveille-moi à 7 h »"), bloc(B_PUCE, "« Quel temps demain ? »"), bloc(B_PUCE, "« Mets la radio »")});
+  c->pages.push_back({bloc(B_SOUS, "Mes applis · 3/5"), bloc(B_TITRE, "Glisse sur mon visage"), bloc(B_TEXTE, "Toutes mes applis apparaissent, comme sur une montre. Touche une icône pour l'ouvrir, glisse à droite pour revenir.")});
+  c->pages.push_back({bloc(B_SOUS, "Le bouton · 4/5"), bloc(B_TITRE, "Le bouton sur le côté"), bloc(B_PUCE, "Un clic : je t'écoute"), bloc(B_PUCE, "Deux clics : je change de caractère"), bloc(B_PUCE, "Appui long : mes infos")});
+  Bloc fin = bloc(B_BOUTON, "C'est parti !"); fin.id = "tuto_fini";
+  c->pages.push_back({bloc(B_SOUS, "Mes réglages · 5/5"), bloc(B_TITRE, "Sur ton téléphone"), bloc(B_TEXTE, "Ouvre komi.local sur le même Wi-Fi. Identifiant : komi, code : " + R.pin + "."), fin});
+  ui::montrerCarte(c);
+}
 static void carteLocale(const String &quoi) {
   if (quoi.startsWith("tables")) { ui::tables(quoi.indexOf(':') > 0 ? quoi.substring(quoi.indexOf(':') + 1).toInt() : 0); carteJeu("tables"); }
   else if (quoi == "heure") carteHeure();
   else if (quoi == "apps") { ui::fermerCarte(); ui::applis(true); }
   else if (quoi == "calcul") carteJeu("calcul");
+  else if (quoi == "tuto" || quoi == "aide") carteTuto();
   else if (quoi == "cadran") {   // cadran suivant, montré tout de suite en aperçu
     R.cadran = (R.cadran + 1) % 3; sauverReglages(); ui::cadran(R.cadran);
     static const char *noms[] = {"Cadran numérique", "Cadran à aiguilles", "Cadran géant"};
@@ -725,6 +739,7 @@ void setup() {
     else if (id == "test_son") testSon = true;
     else if (id.startsWith("appl:")) carteLocale(id.substring(5));            // appli du boîtier
     else if (id.startsWith("appq:")) { allumerEcran(); cerveau::question(id.substring(5)); }   // appli qui passe par le cerveau
+    else if (id == "tuto_fini") { ui::fermerCarte(); ui::humeur(H_CONTENT, 3000); cerveau::dire("À toi de jouer ! Touche mes yeux quand tu veux."); }
     else if (id == "record_reflexes") { Preferences pr; pr.begin("jeux", false); pr.putInt("reflexes", ui::recordReflexes); pr.end(); }
     else if (id == "record_tables") { Preferences pr; pr.begin("jeux", false); pr.putInt("tables", ui::recordTables); pr.end(); }
     else if (id == "blindtest_encore") cerveau::question("Encore un blind test !");
@@ -845,7 +860,8 @@ void loop() {
     bonjourFait = true;
     if (!reseau::enConfiguration()) {
       String nom = R.prenom.length() ? " " + R.prenom : "";
-      ui::sousTitre(R.astuces < 3 ? "Salut" + nom + " ! Touche-moi pour me parler." : "Salut" + nom + " !", 4500);
+      if (R.astuces == 0) carteTuto();   // tout premier démarrage : le petit tutoriel
+      else ui::sousTitre(R.astuces < 3 ? "Salut" + nom + " ! Touche-moi pour me parler." : "Salut" + nom + " !", 4500);
       if (R.astuces < 3) { R.astuces++; sauverReglages(); }
     }
   }
