@@ -35,6 +35,7 @@ void chargerReglages() {
   R.nddDebut = P.getInt("nddD", R.nddDebut);
   R.nddFin = P.getInt("nddF", R.nddFin);
   R.objectifPas = P.getInt("objPas", R.objectifPas);
+  R.cadran = P.getInt("cadran", R.cadran);
   R.ecole = P.getBool("ecole", R.ecole);
   R.wifiInviteNom = P.getString("wiNom", "");
   R.wifiInviteMdp = P.getString("wiMdp", "");
@@ -79,6 +80,7 @@ void sauverReglages() {
   P.putInt("nddD", R.nddDebut);
   P.putInt("nddF", R.nddFin);
   P.putInt("objPas", R.objectifPas);
+  P.putInt("cadran", R.cadran);
   P.putBool("ecole", R.ecole);
   P.putString("wiNom", R.wifiInviteNom);
   P.putString("wiMdp", R.wifiInviteMdp);

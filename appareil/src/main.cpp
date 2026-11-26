@@ -483,6 +483,13 @@ static void carteLocale(const String &quoi) {
   if (quoi.startsWith("tables")) { ui::tables(quoi.indexOf(':') > 0 ? quoi.substring(quoi.indexOf(':') + 1).toInt() : 0); carteJeu("tables"); }
   else if (quoi == "heure") carteHeure();
   else if (quoi == "apps") { ui::fermerCarte(); ui::applis(true); }
+  else if (quoi == "calcul") carteJeu("calcul");
+  else if (quoi == "cadran") {   // cadran suivant, montré tout de suite en aperçu
+    R.cadran = (R.cadran + 1) % 3; sauverReglages(); ui::cadran(R.cadran);
+    static const char *noms[] = {"Cadran numérique", "Cadran à aiguilles", "Cadran géant"};
+    ui::fermerCarte(); ui::modeVeille(true); veilleForcee = true;
+    ui::sousTitre(String(noms[R.cadran]) + " · touche pour revenir", 3000);
+  }
   else if (quoi == "pas") { sauverPas(false); carteJeu("pas"); }
   else if (quoi == "bruit" || quoi == "niveau" || quoi == "reflexes") carteJeu(quoi == "bruit" ? "bruit" : quoi == "niveau" ? "niveau" : "reflexes");
   else if (quoi == "wifi_invite") {   // QR code fait ici : le mot de passe ne quitte jamais le boîtier
@@ -503,9 +510,11 @@ static void carteLocale(const String &quoi) {
 // ------------------------------------------------------------------ réglages appliqués
 static void appliquerTheme();
 void appliquerReglages() {
+  ui::cadran(R.cadran);
   appliquerTheme();
   ui::couleurYeux(couleur565(R.couleur));
   ui::objectifPas = R.objectifPas;
+  ui::cadran(R.cadran);
   ui::formeYeux(R.forme);
   audio::volume(R.volume);
   audio::gainMicro(R.micro);

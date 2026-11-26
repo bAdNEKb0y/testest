@@ -63,7 +63,7 @@ static String reglagesJson() {
   char c[8]; snprintf(c, sizeof c, "#%06X", (unsigned)R.couleur); d["couleur"] = c;
   d["forme"] = R.forme; d["luminosite"] = R.luminosite; d["volume"] = R.volume; d["micro"] = R.micro; d["sens_toucher"] = R.sensToucher; d["veille"] = R.veille;
   d["nuit"] = R.nuit; d["nuit_debut"] = R.nuitDebut; d["nuit_fin"] = R.nuitFin; d["sous_titres"] = R.sousTitres;
-  d["ndd"] = R.ndd; d["ndd_debut"] = R.nddDebut; d["ndd_fin"] = R.nddFin; d["objectif_pas"] = R.objectifPas;
+  d["ndd"] = R.ndd; d["ndd_debut"] = R.nddDebut; d["ndd_fin"] = R.nddFin; d["objectif_pas"] = R.objectifPas; d["cadran"] = R.cadran;
   d["wifi_invite_nom"] = R.wifiInviteNom; d["wifi_invite_regle"] = R.wifiInviteMdp.length() > 0;
   d["ecole"] = R.ecole; d["ecole_debut"] = R.ecoleDebut; d["ecole_fin"] = R.ecoleFin; d["ecole_mercredi"] = R.ecoleMercrediMatin;
   JsonArray rs = d["reseaux"].to<JsonArray>();
@@ -108,6 +108,7 @@ static void routes() {
     if (!d["ecole_debut"].isNull()) R.ecoleDebut = constrain(d["ecole_debut"].as<int>(), 0, 23);
     if (!d["ecole_fin"].isNull()) R.ecoleFin = constrain(d["ecole_fin"].as<int>(), 0, 23);
     if (!d["ecole_mercredi"].isNull()) R.ecoleMercrediMatin = d["ecole_mercredi"].as<bool>();
+    if (!d["cadran"].isNull()) R.cadran = constrain(d["cadran"].as<int>(), 0, 2);
     if (!d["objectif_pas"].isNull()) R.objectifPas = constrain(d["objectif_pas"].as<int>(), 500, 50000);
     if (!d["nuit_debut"].isNull()) R.nuitDebut = constrain(d["nuit_debut"].as<int>(), 0, 23);
     if (!d["nuit_fin"].isNull()) R.nuitFin = constrain(d["nuit_fin"].as<int>(), 0, 23);

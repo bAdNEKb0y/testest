@@ -304,7 +304,13 @@ static const App APPS[] = {
   {"reflexes", "Réflexes", 0xFFE0, ""}, {"quiz", "Quiz", 0x8A7F, "Fais-moi un quiz"}, {"blindtest", "Blind test", 0xE8EC, "Lance un blind test"},
   {"bruit", "Bruit", 0x6B4D, ""}, {"niveau", "Niveau", 0x2E8A, ""}, {"actu", "Actu", 0xC618, "Quoi de neuf aujourd'hui ?"},
   {"traduire", "Traduire", 0x34DF, "Je veux traduire une phrase"}, {"plan", "Plan", 0x2D6B, "Montre-moi la carte autour de moi"}, {"habitudes", "Habitudes", 0x07EF, "Montre mes habitudes"},
-  {"defi", "Défi", 0xFCC0, "C'est quoi le défi du jour ?"}, {"des", "Dés", 0xF2A0, "Lance un dé"}, {"wifi_invite", "Wi-Fi", 0x435C, ""}, {"appareil", "Réglages", 0x52AA, ""},
+  {"defi", "Défi", 0xFCC0, "C'est quoi le défi du jour ?"}, {"des", "Dés", 0xF2A0, "Lance un dé"}, {"calcul", "Calculatrice", 0x8C71, ""}, {"cadran", "Cadrans", 0x3A9F, ""},
+  {"pendu", "Pendu", 0x9A1F, "On joue au pendu !"}, {"revision", "Révisions", 0x2DBF, "Je veux réviser une leçon"}, {"recettes", "Recettes", 0xFB20, "Donne-moi une idée de recette pour ce soir"},
+  {"courses", "Courses", 0x3666, "Montre ma liste de courses"}, {"depenses", "Dépenses", 0x05F3, "Montre mes dépenses du mois"}, {"films", "Films", 0xD8A7, "Qu'est-ce que je regarde ce soir ?"},
+  {"jeuxvideo", "Jeux vidéo", 0x6A5F, "Montre mes jeux vidéo"}, {"tele", "Télé", 0x4A69, "Qu'est-ce qu'il y a à la télé ce soir ?"}, {"colis", "Colis", 0xB3A6, "Où en sont mes colis ?"},
+  {"journal", "Journal", 0xE30F, "Je veux écrire dans mon journal"}, {"ephemeride", "Ce jour-là", 0xCC27, "Il s'est passé quoi un jour comme aujourd'hui ?"}, {"corvees", "Corvées", 0x2C8B, "Qui fait quoi cette semaine ?"},
+  {"cadeaux", "Cadeaux", 0xF8B2, "Montre mes idées de cadeaux"}, {"essence", "Essence", 0x8410, "Où est l'essence la moins chère ?"},
+  {"wifi_invite", "Wi-Fi", 0x435C, ""}, {"appareil", "Réglages", 0x52AA, ""},
 };
 static const int NB_APPS = sizeof(APPS) / sizeof(APPS[0]);
 static bool grille = false;
@@ -363,6 +369,58 @@ static int rfEtat = 0;            // 0 prêt, 1 attends, 2 vert, 3 résultat, 4 
 static uint32_t rfVert = 0, rfTemps = 0, rfChange = 0;
 static int rfEssais = 0, rfTotal = 0;
 static float bruitMax = 0;
+// calculatrice tactile
+static String calcAff = "0", calcHaut = "";
+static double calcA = 0; static char calcOp = 0; static bool calcNeuf = true, calcErreur = false;
+static uint32_t calcTouche = 0; static int calcDerniere = -1;
+static const char *CALC[5][4] = {{"C", "<", "%", "/"}, {"7", "8", "9", "x"}, {"4", "5", "6", "-"}, {"1", "2", "3", "+"}, {"0", ",", "=", "="}};
+static String calcTexte(double v) {
+  if (!isfinite(v) || fabs(v) > 9.99e11) return "Erreur";
+  char b[32]; snprintf(b, sizeof b, "%.10g", v);
+  String r = b; r.replace(".", ","); r.replace("e+", "e");
+  return r;
+}
+static double calcValeur() { String t = calcAff; t.replace(",", "."); return atof(t.c_str()); }
+static double calcApplique(double a, char op, double b) { switch (op) { case '+': return a + b; case '-': return a - b; case 'x': return a * b; case '/': return b == 0 ? NAN : a / b; } return b; }
+static void calcAppui(const char *k) {
+  String t = k;
+  if (calcErreur && t != "C") return;
+  if (t == "C") { calcAff = "0"; calcHaut = ""; calcA = 0; calcOp = 0; calcNeuf = true; calcErreur = false; return; }
+  if (t == "<") { if (!calcNeuf && calcAff.length() > 1) calcAff.remove(calcAff.length() - 1); else { calcAff = "0"; calcNeuf = true; } return; }
+  if (t.length() == 1 && isdigit(t[0])) { if (calcNeuf || calcAff == "0") calcAff = t; else if (calcAff.length() < 12) calcAff += t; calcNeuf = false; return; }
+  if (t == ",") { if (calcNeuf) { calcAff = "0,"; calcNeuf = false; } else if (calcAff.indexOf(',') < 0) calcAff += ","; return; }
+  if (t == "%") { calcAff = calcTexte(calcOp ? calcA * calcValeur() / 100 : calcValeur() / 100); calcNeuf = false; return; }
+  double v = calcValeur();
+  if (t == "=") {
+    if (!calcOp) return;
+    double r = calcApplique(calcA, calcOp, v);
+    calcHaut = calcTexte(calcA) + " " + String(calcOp == 'x' ? "x" : String(calcOp)) + " " + calcTexte(v) + " =";
+    calcAff = calcTexte(r); calcErreur = calcAff == "Erreur"; calcOp = 0; calcNeuf = true; calcA = r; return;
+  }
+  // + - x /
+  if (calcOp && !calcNeuf) { calcA = calcApplique(calcA, calcOp, v); calcAff = calcTexte(calcA); calcErreur = calcAff == "Erreur"; } else if (!calcOp) calcA = v;
+  calcOp = t[0]; calcNeuf = true;
+  calcHaut = calcTexte(calcA) + " " + t;
+}
+static void calcRect(int r, int c, int &x, int &y, int &w, int &h) {   // touche (r, c) à l'écran
+  int top = HAUT_CARTE, kw = 60, kh = 36, gx = 6, gy = 5;
+  x = CENTRE - (4 * kw + 3 * gx) / 2 + c * (kw + gx); y = top + 60 + r * (kh + gy); w = kw; h = kh;
+  if (r == 4 && c == 2) w = kw * 2 + gx;
+}
+static void calcSymbole(const char *k, int cx, int cy, uint16_t col) {
+  String t = k;
+  auto L = [&](int x1, int y1, int x2, int y2) { for (int a = -1; a <= 1; a++) { g->drawLine(x1 + a, y1, x2 + a, y2, col); g->drawLine(x1, y1 + a, x2, y2 + a, col); } };
+  if (t == "+") { L(cx - 9, cy, cx + 9, cy); L(cx, cy - 9, cx, cy + 9); }
+  else if (t == "-") L(cx - 9, cy, cx + 9, cy);
+  else if (t == "x") { L(cx - 7, cy - 7, cx + 7, cy + 7); L(cx - 7, cy + 7, cx + 7, cy - 7); }
+  else if (t == "/") { L(cx - 9, cy, cx + 9, cy); g->fillCircle(cx, cy - 7, 3, col); g->fillCircle(cx, cy + 7, 3, col); }
+  else if (t == "=") { L(cx - 9, cy - 4, cx + 9, cy - 4); L(cx - 9, cy + 4, cx + 9, cy + 4); }
+  else if (t == "<") { L(cx + 8, cy, cx - 6, cy); L(cx - 6, cy, cx, cy - 6); L(cx - 6, cy, cx, cy + 6); }
+  else texteCentre(F_FORT, t, cx, cy + 8, col);
+}
+// cadran de veille : 0 numérique, 1 aiguilles, 2 géant
+static int cadranVeille = 0;
+void ui::cadran(int c) { VERROU; cadranVeille = ((c % 3) + 3) % 3; }
 static uint32_t btDebut = 0;
 static bool btRevele = false;
 static int btScore = 0, btTours = 0, btReponse = -1;
@@ -744,6 +802,14 @@ static void tape(int x, int y) {
   if (carte->type == "sport") {   // toucher : pause / reprise
     if (sportPause) { sportCumulPause += millis() - sportPause; sportPause = 0; }
     else if (sportDebut) sportPause = millis();
+    return;
+  }
+  if (carte->type == "calcul") {
+    for (int r = 0; r < 5; r++) for (int c = 0; c < 4; c++) {
+      if (r == 4 && c == 3) continue;
+      int kx, ky, kw, kh; calcRect(r, c, kx, ky, kw, kh);
+      if (x >= kx - 3 && x <= kx + kw + 3 && y >= ky - 2 && y <= ky + kh + 2) { calcAppui(CALC[r][c]); calcTouche = millis(); calcDerniere = r * 4 + c; return; }
+    }
     return;
   }
   if (carte->type == "pas" || carte->type == "niveau") return;
@@ -1332,6 +1398,46 @@ static void dessinerVeille(uint32_t m, float a) {
   localtime_r(&t, &tm);
   bool heureOk = tm.tm_year >= 120;
   uint16_t txt = attenue(0xE73C, a);
+  if (cadranVeille == 1 && heureOk) {   // cadran à aiguilles
+    int cx = CENTRE + dx / 2, cy = CENTRE + dy / 2, rr = 180;
+    for (int i = 0; i < 60; i++) {
+      float an = i * 0.10472f; bool gros = i % 5 == 0;
+      int r1 = gros ? rr - 18 : rr - 7;
+      g->drawLine(cx + sinf(an) * r1, cy - cosf(an) * r1, cx + sinf(an) * rr, cy - cosf(an) * rr, attenue(gros ? 0xE73C : 0x632C, a));
+      if (gros) g->drawLine(cx + sinf(an) * r1 + 1, cy - cosf(an) * r1, cx + sinf(an) * rr + 1, cy - cosf(an) * rr, attenue(0xE73C, a));
+    }
+    static const char *J2[] = {"DIM", "LUN", "MAR", "MER", "JEU", "VEN", "SAM"};
+    g->drawRoundRect(cx + 70, cy - 15, 66, 30, 8, attenue(0x632C, a));
+    texteCentre(F_PETIT, String(J2[tm.tm_wday]) + " " + tm.tm_mday, cx + 103, cy + 5, attenue(accent, a));
+    if (meteoCode >= 0) texteCentre(F_SOUS, meteoTemp, cx, cy + 92, attenue(0xE73C, a));
+    visage(cx, cy - 78, 0.22f, m);
+    float sec = tm.tm_sec, mi = tm.tm_min + sec / 60, he = (tm.tm_hour % 12) + mi / 60;
+    auto aiguille = [&](float an, int lg, int ep, uint16_t c) {   // aiguille pleine (deux triangles)
+      float sa = sinf(an), ca = cosf(an);
+      if (ep == 0) { g->drawLine(cx - sa * 22, cy + ca * 22, cx + sa * lg, cy - ca * lg, c); return; }
+      int x1 = cx - sa * 14 + ca * ep, y1 = cy + ca * 14 + sa * ep, x2 = cx - sa * 14 - ca * ep, y2 = cy + ca * 14 - sa * ep;
+      int x3 = cx + sa * lg + ca * ep * 0.6f, y3 = cy - ca * lg + sa * ep * 0.6f, x4 = cx + sa * lg - ca * ep * 0.6f, y4 = cy - ca * lg - sa * ep * 0.6f;
+      g->fillTriangle(x1, y1, x2, y2, x3, y3, c); g->fillTriangle(x2, y2, x3, y3, x4, y4, c);
+    };
+    aiguille(he * 0.5236f, 100, 6, attenue(0xE73C, a));
+    aiguille(mi * 0.10472f, 152, 4, attenue(0xBDF7, a));
+    aiguille(sec * 0.10472f, 160, 0, attenue(accent, a));
+    g->fillCircle(cx, cy, 8, attenue(accent, a)); g->fillCircle(cx, cy, 3, NOIR);
+    if (ui::horsLigne) g->fillCircle(cx, 432, 3, attenue(ROUGE, a));
+    return;
+  }
+  if (cadranVeille == 2 && heureOk) {   // cadran géant : les heures au-dessus, les minutes en couleur
+    char hh[4], mm[4]; snprintf(hh, sizeof hh, "%02d", tm.tm_hour); snprintf(mm, sizeof mm, "%02d", tm.tm_min);
+    texteCentre(F_HORLOGE, hh, CENTRE + dx, 210 + dy, attenue(0xE73C, a));
+    texteCentre(F_HORLOGE, mm, CENTRE + dx, 318 + dy, attenue(accent, a));
+    static const char *J3[] = {"dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"};
+    texteCentre(F_TEXTE, String(J3[tm.tm_wday]) + " " + tm.tm_mday, CENTRE + dx, 360 + dy, attenue(GRIS_CLAIR, a));
+    if (meteoCode >= 0) texteCentre(F_PETIT, meteoTemp, CENTRE + dx, 386 + dy, attenue(GRIS, a));
+    float f = tm.tm_sec / 60.f;
+    g->fillArc(CENTRE, CENTRE, R - 2, R - 5, -90, -90 + 360 * f, attenue(accent, 0.5f * a));
+    if (ui::horsLigne) g->fillCircle(CENTRE + dx, 420 + dy, 3, attenue(ROUGE, a));
+    return;
+  }
   // petits yeux
   visage(CENTRE + dx, 118 + dy, 0.36f, m);
   char h[8];
@@ -1403,6 +1509,22 @@ static void iconeApp(const char *id, int cx, int cy, float r) {
   else if (i == "defi") { g->fillTriangle(cx, cy - 16 * k, cx - 6 * k, cy - 2 * k, cx + 6 * k, cy - 2 * k, BLANC); C(0, 4, 8, true); }
   else if (i == "des") { Rr(-13, -13, 26, 26); C(-6, -6, 3, true); C(6, 6, 3, true); C(0, 0, 3, true); }
   else if (i == "wifi_invite") { for (int a = 0; a < 3; a++) g->fillArc(cx, cy + 10 * k, (8 + a * 7) * k, (5 + a * 7) * k, 225, 315, BLANC); C(0, 10, 3, true); }
+  else if (i == "calcul") { Rr(-14, -17, 28, 34); Rr(-9, -12, 18, 8, true); for (int a = 0; a < 3; a++) for (int b = 0; b < 2; b++) C(-6 + a * 6, 3 + b * 7, 2, true); }
+  else if (i == "cadran") { C(0, 0, 17); L(0, 0, 0, -10); L(0, 0, 9, 0); for (int a = 0; a < 4; a++) { float an = a * 1.5708f; C(cosf(an) * 13, sinf(an) * 13, 1.5f, true); } }
+  else if (i == "pendu") { L(-12, 16, 6, 16); L(-8, 16, -8, -16); L(-8, -16, 10, -16); L(10, -16, 10, -10); C(10, -4, 5); L(10, 1, 10, 10); }
+  else if (i == "revision") { Rr(-16, -10, 22, 16); Rr(-8, -4, 22, 16, true); }
+  else if (i == "recettes") { C(0, 4, 13); L(-13, 4, 13, 4); L(-3, -16, -3, -10, 2); L(3, -16, 3, -10, 2); }
+  else if (i == "courses") { L(-16, -12, -11, -12); L(-11, -12, -7, 6); L(-7, 6, 12, 6); L(12, 6, 15, -6); L(15, -6, -9, -6); C(-5, 12, 3, true); C(10, 12, 3, true); }
+  else if (i == "depenses") { for (int a = 0; a < 3; a++) Rr(-14 + a * 10, 8 - a * 8, 7, 8 + a * 8, true); }
+  else if (i == "films") { Rr(-16, -10, 32, 22); g->fillTriangle(cx - 4 * k, cy - 5 * k, cx - 4 * k, cy + 7 * k, cx + 7 * k, cy + 1 * k, BLANC); }
+  else if (i == "jeuxvideo") { g->fillRoundRect(cx - 18 * k, cy - 9 * k, 36 * k, 20 * k, 9 * k, BLANC); g->fillRect(cx - 12 * k, cy - 1 * k, 9 * k, 3 * k, APPS[0].c); g->fillRect(cx - 9 * k, cy - 4 * k, 3 * k, 9 * k, APPS[0].c); g->fillCircle(cx + 9 * k, cy - 1 * k, 2.5f * k, APPS[0].c); g->fillCircle(cx + 13 * k, cy + 3 * k, 2.5f * k, APPS[0].c); }
+  else if (i == "tele") { Rr(-17, -10, 34, 22); L(-6, 16, 6, 16); L(-7, -17, 0, -10, 2); L(7, -17, 0, -10, 2); }
+  else if (i == "colis") { Rr(-14, -12, 28, 26); L(-14, -4, 14, -4); L(0, -12, 0, -4, 4); }
+  else if (i == "journal") { Rr(-12, -15, 24, 30); L(-6, -7, 7, -7, 2); L(-6, -1, 7, -1, 2); L(-6, 5, 3, 5, 2); }
+  else if (i == "ephemeride") { Rr(-13, -12, 26, 26); L(-13, -4, 13, -4); if (k > 0.6f) texteCentre(F_PETIT, "26", cx, cy + 11 * k, BLANC); }
+  else if (i == "corvees") { L(-10, 16, 8, -14, 4); g->fillTriangle(cx - 16 * k, cy + 16 * k, cx - 4 * k, cy + 16 * k, cx - 10 * k, cy + 6 * k, BLANC); }
+  else if (i == "cadeaux") { Rr(-14, -5, 28, 20, true); Rr(-16, -11, 32, 7, true); L(0, -11, 0, 15, 3); L(0, -11, -7, -17, 2); L(0, -11, 7, -17, 2); }
+  else if (i == "essence") { Rr(-13, -14, 18, 30); Rr(-9, -10, 10, 8, true); L(5, -6, 12, -2, 2); L(12, -2, 12, 10, 2); }
   else if (i == "appareil") { C(0, 0, 9); for (int a = 0; a < 8; a++) { float an = a * 0.785f; L(cosf(an) * 11, sinf(an) * 11, cosf(an) * 16, sinf(an) * 16, 4); } }
 }
 static void dessinerGrille(uint32_t m) {
@@ -1479,7 +1601,7 @@ void ui::dessiner(uint32_t m) {
   }
   // fermeture automatique quand on ne s'en sert plus
   if (carte && carteVisible && !appui && act != A_PARLE && act != A_ECOUTE && act != A_REFLECHIT) {
-    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "dessin" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche) || carte->type == "tables" || carte->type == "blindtest" || carte->type == "pas" || carte->type == "bruit" || carte->type == "niveau" || carte->type == "reflexes" || (carte->type == "sport" && sportEtape < (int)carte->pages.size());
+    bool garde = carte->type == "config" || carte->type == "test" || carte->type == "dessin" || carte->type == "minuteur" || carte->type == "lampe" || carte->type == "respiration" || (carte->type == "chrono" && chronoMarche) || carte->type == "tables" || carte->type == "blindtest" || carte->type == "pas" || carte->type == "bruit" || carte->type == "niveau" || carte->type == "reflexes" || carte->type == "calcul" || (carte->type == "sport" && sportEtape < (int)carte->pages.size());
     uint32_t delai = garde ? 0 : (carte->type == "heure" ? 25000 : 60000);
     if (delai && m - derniereAction > delai) carteVisible = false;
   }
@@ -1630,6 +1752,22 @@ void ui::dessiner(uint32_t m) {
         if (tabDernier >= 0 && m - tabFlash < 350) cq = tabDernier ? 0x4F50 : 0xFA6F;
         texteCentre(F_TEMP, String(tabA) + " x " + tabB, CENTRE, top + 120, cq);
         for (int i = 0; i < 4; i++) bouton(i % 2 ? CENTRE + 6 : CENTRE - 136, top + 152 + (i / 2) * 66, 130, 56, String(tabRep[i]), 0x10A2);
+      }
+    } else if (carte->type == "calcul") {
+      if (calcHaut.length()) texte(F_PETIT, calcHaut, CENTRE + 128 - largeur(F_PETIT, calcHaut), top + 20, GRIS);
+      const uint8_t *pol = largeur(F_TITRE, calcAff) < 250 ? F_TITRE : F_FORT;
+      texte(pol, calcAff, CENTRE + 128 - largeur(pol, calcAff), top + 50, calcErreur ? 0xFA6F : BLANC);
+      for (int r = 0; r < 5; r++) for (int c = 0; c < 4; c++) {
+        if (r == 4 && c == 3) continue;
+        int kx, ky, kw, kh; calcRect(r, c, kx, ky, kw, kh);
+        const char *k = CALC[r][c];
+        bool op = c == 3 || (r == 4 && c == 2), haut = r == 0 && c < 3;
+        bool presse = calcDerniere == r * 4 + c && m - calcTouche < 140;
+        bool actif = op && calcOp == k[0] && calcNeuf;
+        uint16_t fond = presse ? BLANC : actif ? BLANC : op ? 0xFD20 : haut ? 0x52AA : 0x2124;
+        uint16_t enc = presse || actif ? (op ? 0xFD20 : NOIR) : BLANC;
+        g->fillRoundRect(kx, ky, kw, kh, kh / 2, fond);
+        calcSymbole(k, kx + kw / 2, ky + kh / 2, enc);
       }
     } else if (carte->type == "bruit") {
       float db = bruitDb;
