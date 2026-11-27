@@ -1538,7 +1538,8 @@ static void dessinerGrille(uint32_t m) {
     if (dx * dx + dy * dy > (R + r) * (R + r)) continue;
     float d = dx * dx + dy * dy;
     if (d < meilleur) { meilleur = d; grilleProche = i; }
-    g->fillCircle(x, y, r, APPS[i].c);
+    bool grise = ui::horsLigne && APPS[i].phrase[0];
+    g->fillCircle(x, y, r, grise ? attenue(APPS[i].c, 0.3f) : APPS[i].c);
     if (s > 0.85f) g->drawCircle(x, y, r, attenue(BLANC, 0.25f));
     iconeApp(APPS[i].id, x, y, r);
   }
@@ -1546,6 +1547,7 @@ static void dessinerGrille(uint32_t m) {
   int w = largeur(F_SOUS, APPS[grilleProche].nom) + 28;
   g->fillRoundRect(CENTRE - w / 2, 404, w, 30, 15, 0x10A2);
   texteCentre(F_SOUS, APPS[grilleProche].nom, CENTRE, 425, BLANC);
+  if (ui::horsLigne && APPS[grilleProche].phrase[0]) texteCentre(F_PETIT, "il faut Internet", CENTRE, 448, GRIS_CLAIR);
 }
 void ui::dessiner(uint32_t m) {
   VERROU;

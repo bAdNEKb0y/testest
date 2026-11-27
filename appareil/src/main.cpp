@@ -492,12 +492,37 @@ static void carteTuto() {
   c->pages.push_back({bloc(B_SOUS, "Mes réglages · 5/5"), bloc(B_TITRE, "Sur ton téléphone"), bloc(B_TEXTE, "Ouvre komi.local sur le même Wi-Fi. Identifiant : komi, code : " + R.pin + "."), fin});
   ui::montrerCarte(c);
 }
+// après une mise à jour : ce qui a changé (une seule fois)
+static const char *NOUVEAUTES[] = {
+  "Je réponds pour moins cher",
+  "Tutoriel : dis « aide »",
+  "Sans Wi-Fi, mes applis restent là",
+  "Je préviens si ma batterie est faible",
+};
+static void carteNouveautes() {
+  Carte *c = new Carte();
+  c->type = "fiche"; c->locale = true;
+  std::vector<Bloc> p = {bloc(B_SOUS, "Mise à jour · " NEXXUS_VERSION), bloc(B_TITRE, "Quoi de neuf ?")};
+  for (auto n : NOUVEAUTES) p.push_back(bloc(B_PUCE, n));
+  c->pages.push_back(p);
+  ui::montrerCarte(c);
+}
+static bool versionNouvelle() {   // vrai une seule fois après chaque nouveau firmware
+  static const char *ID = __DATE__ " " __TIME__;
+  Preferences pr; pr.begin("version", false);
+  String avant = pr.getString("id", "");
+  bool neuf = avant != ID;
+  if (neuf) pr.putString("id", ID);
+  pr.end();
+  return neuf && avant.length();   // pas au tout premier démarrage (c'est le tutoriel qui passe)
+}
 static void carteLocale(const String &quoi) {
   if (quoi.startsWith("tables")) { ui::tables(quoi.indexOf(':') > 0 ? quoi.substring(quoi.indexOf(':') + 1).toInt() : 0); carteJeu("tables"); }
   else if (quoi == "heure") carteHeure();
   else if (quoi == "apps") { ui::fermerCarte(); ui::applis(true); }
   else if (quoi == "calcul") carteJeu("calcul");
   else if (quoi == "tuto" || quoi == "aide") carteTuto();
+  else if (quoi == "nouveautes") carteNouveautes();
   else if (quoi == "cadran") {   // cadran suivant, montré tout de suite en aperçu
     R.cadran = (R.cadran + 1) % 3; sauverReglages(); ui::cadran(R.cadran);
     static const char *noms[] = {"Cadran numérique", "Cadran à aiguilles", "Cadran géant"};
@@ -738,7 +763,11 @@ void setup() {
     else if (id == "stop_radio") { audio::radioStop(); ui::fermerCarte(); }
     else if (id == "test_son") testSon = true;
     else if (id.startsWith("appl:")) carteLocale(id.substring(5));            // appli du boîtier
-    else if (id.startsWith("appq:")) { allumerEcran(); cerveau::question(id.substring(5)); }   // appli qui passe par le cerveau
+    else if (id.startsWith("appq:")) {   // appli qui passe par le cerveau
+      allumerEcran();
+      if (WiFi.status() != WL_CONNECTED) { ui::humeur(H_PERDU, 2500); ui::sousTitre("Il me faut Internet pour ça. Les applis en couleur marchent sans.", 4500); ui::applis(true); }
+      else cerveau::question(id.substring(5));
+    }   // appli qui passe par le cerveau
     else if (id == "tuto_fini") { ui::fermerCarte(); ui::humeur(H_CONTENT, 3000); cerveau::dire("À toi de jouer ! Touche mes yeux quand tu veux."); }
     else if (id == "record_reflexes") { Preferences pr; pr.begin("jeux", false); pr.putInt("reflexes", ui::recordReflexes); pr.end(); }
     else if (id == "record_tables") { Preferences pr; pr.begin("jeux", false); pr.putInt("tables", ui::recordTables); pr.end(); }
@@ -860,7 +889,9 @@ void loop() {
     bonjourFait = true;
     if (!reseau::enConfiguration()) {
       String nom = R.prenom.length() ? " " + R.prenom : "";
+      bool maj = versionNouvelle();
       if (R.astuces == 0) carteTuto();   // tout premier démarrage : le petit tutoriel
+      else if (maj) carteNouveautes();
       else ui::sousTitre(R.astuces < 3 ? "Salut" + nom + " ! Touche-moi pour me parler." : "Salut" + nom + " !", 4500);
       if (R.astuces < 3) { R.astuces++; sauverReglages(); }
     }
@@ -961,6 +992,21 @@ void loop() {
     if (pmu.isBatteryConnect()) { batterie = pmu.getBatteryPercent(); enCharge = pmu.isCharging(); }
     else { batterie = -1; enCharge = false; }
     ui::batterieFaible = batterie >= 0 && batterie <= 10 && !enCharge;
+    // prévenir une fois à 10 % puis à 5 % (sans réveiller la nuit ni parler en mode école)
+    static int alerteBatterie = 100;
+    if (enCharge || batterie < 0 || batterie > 15) alerteBatterie = 100;
+    else {
+      int seuil = batterie <= 5 ? 5 : batterie <= 10 ? 10 : 100;
+      if (seuil < alerteBatterie) {
+        alerteBatterie = seuil;
+        if (!ecoleActif && !estLaNuit() && !nePasDeranger()) {
+          ui::humeur(H_TRISTE, 4000);
+          String t = seuil == 5 ? "Plus que " + String(batterie) + " % de batterie : branche-moi vite !" : "Ma batterie est faible (" + String(batterie) + " %). Tu peux me brancher ?";
+          ui::sousTitre(t, 7000);
+          if (!ui::carteOuverte()) cerveau::dire(t);
+        }
+      }
+    }
   }
 
   // --- minuteurs

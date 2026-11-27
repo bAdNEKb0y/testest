@@ -211,7 +211,9 @@ static void probleme(const String &message, uint32_t gen) {
   etat = message;
   ui::activite(A_ERREUR);
   ui::humeur(H_PERDU, 4000);
-  ui::sousTitre(message, 6000);
+  // sans Internet, on propose tout de suite ce qui marche hors ligne
+  if (WiFi.status() != WL_CONNECTED) { ui::horsLigne = true; ui::sousTitre(message + " Mes applis hors ligne marchent quand même.", 6000); ui::applis(true); }
+  else ui::sousTitre(message, 6000);
   Serial.println("[cerveau] " + message);
 }
 

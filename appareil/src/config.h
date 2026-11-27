@@ -1,7 +1,7 @@
 // Nexxus — broches et constantes de la carte Waveshare ESP32-S3-Touch-AMOLED-1.75
 #pragma once
 
-#define NEXXUS_VERSION "1.0.0"
+#define NEXXUS_VERSION "1.1.0"
 
 // Écran AMOLED rond 466 x 466 (CO5300, QSPI)
 #define LCD_SDIO0 4
