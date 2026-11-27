@@ -1,0 +1,501 @@
+Processing nexxus (platform: https://github.com/pioarduino/platform-espressif32/releases/download/55.03.39/platform-espressif32.zip; board: esp32-s3-devkitc-1; framework: arduino)
+--------------------------------------------------------------------------------
+Library Manager: Installing git+https://github.com/schreibfaul1/ESP32-audioI2S.git#3.4.7
+git version 2.56.1
+Cloning into '/home/runner/.platformio/.cache/tmp/pkg-installing-31vs7xhr'...
+Note: switching to '59bf36b214580ad2d1157748cd0268c9376d6640'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+Library Manager: ESP32-audioI2S@3.4.7+sha.59bf36b has been installed!
+Library Manager: Installing lewisxhe/SensorLib @ 0.3.1
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: SensorLib@0.3.1 has been installed!
+Library Manager: Installing lewisxhe/XPowersLib @ 0.2.6
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: XPowersLib@0.2.6 has been installed!
+Library Manager: Installing h2zero/NimBLE-Arduino @ ^2.3.0
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: NimBLE-Arduino@2.5.2 has been installed!
+Library Manager: Installing bblanchon/ArduinoJson @ ^7.2.0
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: ArduinoJson@7.4.3 has been installed!
+Library Manager: Installing bitbank2/JPEGDEC @ ^1.6.2
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: JPEGDEC@1.8.5 has been installed!
+Library Manager: Resolving dependencies...
+Library Manager: Installing bb_spi_lcd
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: bb_spi_lcd@2.9.10 has been installed!
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32-s3-devkitc-1.html
+PLATFORM: Espressif 32 (55.3.39) > Espressif ESP32-S3-DevKitC-1-N8 (8 MB QD, No PSRAM)
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 6.25MB Flash
+DEBUG: Current (esp-builtin) On-board (esp-builtin) External (cmsis-dap, esp-bridge, esp-prog, esp-prog-2, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - contrib-piohome @ 3.4.4 
+ - framework-arduinoespressif32 @ 3.3.9 
+ - framework-arduinoespressif32-libs @ 5.5.4+sha.735507283d 
+ - tool-esptoolpy @ 5.3.0 
+ - tool-xtensa-esp-elf-gdb @ 17.1.0+20260402 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20260121
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 53 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- ESP32-audioI2S @ 3.4.7+sha.59bf36b
+|-- SensorLib @ 0.3.1
+|-- XPowersLib @ 0.2.6
+|-- NimBLE-Arduino @ 2.5.2
+|-- ArduinoJson @ 7.4.3
+|-- JPEGDEC @ 1.8.5
+|-- WiFi @ 3.3.9
+|-- GFX_nexxus @ 1.6.4
+|-- Preferences @ 3.3.9
+|-- Wire @ 3.3.9
+|-- DNSServer @ 3.3.9
+|-- ESPmDNS @ 3.3.9
+|-- Update @ 3.3.9
+|-- WebServer @ 3.3.9
+|-- ESP_I2S @ 3.3.9
+|-- ES8311 @ 1.0.0
+|-- QR_nexxus
+Building in release mode
+Compiling .pio/build/nexxus/lib7aa/FS/FS.cpp.o
+Compiling .pio/build/nexxus/lib7aa/FS/vfs_api.cpp.o
+Compiling .pio/build/nexxus/lib7a5/FFat/FFat.cpp.o
+Compiling .pio/build/nexxus/lib487/Network/NetworkClient.cpp.o
+Compiling .pio/build/nexxus/lib487/Network/NetworkEvents.cpp.o
+Compiling .pio/build/nexxus/lib487/Network/NetworkInterface.cpp.o
+Compiling .pio/build/nexxus/lib487/Network/NetworkManager.cpp.o
+Compiling .pio/build/nexxus/lib487/Network/NetworkServer.cpp.o
+Compiling .pio/build/nexxus/lib487/Network/NetworkUdp.cpp.o
+Compiling .pio/build/nexxus/libf0e/NetworkClientSecure/NetworkClientSecure.cpp.o
+Compiling .pio/build/nexxus/libf0e/NetworkClientSecure/ssl_client.cpp.o
+Compiling .pio/build/nexxus/lib30b/SPI/SPI.cpp.o
+Compiling .pio/build/nexxus/lib770/SD/SD.cpp.o
+Compiling .pio/build/nexxus/lib770/SD/sd_diskio.cpp.o
+Compiling .pio/build/nexxus/lib770/SD/sd_diskio_crc.c.o
+Compiling .pio/build/nexxus/libc3a/SD_MMC/SD_MMC.cpp.o
+Compiling .pio/build/nexxus/lib989/WiFi/AP.cpp.o
+Compiling .pio/build/nexxus/lib989/WiFi/STA.cpp.o
+Compiling .pio/build/nexxus/lib989/WiFi/WiFi.cpp.o
+Compiling .pio/build/nexxus/lib989/WiFi/WiFiAP.cpp.o
+Compiling .pio/build/nexxus/lib989/WiFi/WiFiGeneric.cpp.o
+Compiling .pio/build/nexxus/lib989/WiFi/WiFiMulti.cpp.o
+Compiling .pio/build/nexxus/lib989/WiFi/WiFiSTA.cpp.o
+Compiling .pio/build/nexxus/lib989/WiFi/WiFiScan.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/Audio.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/aac_decoder/aac_decoder.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/aac_decoder/libfaad/neaacdec.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/flac_decoder/flac_decoder.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/mp3_decoder/mp3_decoder.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/opus_decoder/celt.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/opus_decoder/opus_decoder.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/opus_decoder/range_decoder.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/opus_decoder/silk.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/vorbis_decoder/vorbis_decoder.cpp.o
+Compiling .pio/build/nexxus/lib93c/ESP32-audioI2S/wav_decoder/wav_decoder.cpp.o
+Compiling .pio/build/nexxus/liba33/Wire/Wire.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/SensorBHI260AP.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/SensorBHI260AP_Klio.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/SensorBMA423.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/SensorRtcHelper.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/SensorWireHelper.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/TouchDrvCSTXXX.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/TouchDrvGT9895.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/TouchDrvInterface.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/BMM150/bmm150.c.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/BoschParseStatic.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/bhi3.c.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/bhi3_multi_tap.c.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/bhy2.c.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/bhy2_bsec.c.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/bhy2_head_tracker.c.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/bhy2_hif.c.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/bhy2_klio.c.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/bhy2_parse.c.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/bhy2_swim.c.o
+Compiling .pio/build/nexxus/lib729/SensorLib/bosch/common/common.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/platform/SensorCommDebug.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/platform/SensorCommStatic.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/touch/TouchDrvCST226.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/touch/TouchDrvCST816.cpp.o
+Compiling .pio/build/nexxus/lib729/SensorLib/touch/TouchDrvCST92xx.cpp.o
+Compiling .pio/build/nexxus/lib122/XPowersLib/XPowersLibInterface.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLE2904.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEAddress.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEAdvertisedDevice.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEAdvertisementData.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEAdvertising.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEAttValue.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEBeacon.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLECharacteristic.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEClient.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEDescriptor.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEDevice.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEEddystoneTLM.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEExtAdvertising.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEHIDDevice.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEL2CAPChannel.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEL2CAPServer.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLERemoteCharacteristic.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLERemoteDescriptor.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLERemoteService.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLERemoteValueAttribute.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEScan.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEServer.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEService.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEStream.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEUUID.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/NimBLEUtils.cpp.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/esp_port/esp-hci/src/esp_nimble_hci.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/esp_port/esp-hci/src/na_hci_driver.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/esp_port/esp-hci/src/na_hci_transport.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/esp_port/port/src/exp_nimble_mem.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/aes_decrypt.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/aes_encrypt.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/cbc_mode.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/ccm_mode.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/cmac_mode.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/ctr_mode.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/ctr_prng.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/ecc.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/ecc_dh.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/ecc_dsa.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/ecc_platform_specific.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/hmac.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/hmac_prng.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/sha256.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/ext/tinycrypt/src/utils.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_adv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_conn.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_conn_hci.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_crypto.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_ctrl.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_dtm.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_hci.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_hci_ev.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_hci_supp_cmd.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_hci_vs.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_iso.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_iso_big.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_isoal.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_pdu.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_rand.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_resolv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_rfmgmt.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_scan.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_scan_aux.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_sched.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_sync.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_trace.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_utils.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/controller/src/ble_ll_whitelist.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/drivers/nrf51/src/ble_hw.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/drivers/nrf51/src/ble_phy.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/drivers/nrf5x/src/ble_hw.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/drivers/nrf5x/src/ble_phy.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/drivers/nrf5x/src/ble_phy_trace.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/drivers/nrf5x/src/nrf52/phy.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/drivers/nrf5x/src/nrf53/phy.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/access.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/adv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/adv_ext.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/adv_legacy.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/aes-ccm.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/app_keys.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/beacon.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/cdb.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/cfg.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/cfg_cli.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/cfg_srv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/crypto.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/friend.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/glue.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/health_cli.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/health_srv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/heartbeat.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/light_model.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/lpn.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/mesh.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/model_cli.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/model_srv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/msg.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/net.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/pb_adv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/pb_gatt.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/pb_gatt_srv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/prov.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/prov_device.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/provisioner.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/proxy.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/proxy_msg.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/proxy_srv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/rpl.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/settings.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/shell.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/subnet.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/testing.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/mesh/src/transport.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/services/gap/src/ble_svc_gap.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/services/gatt/src/ble_svc_gatt.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_aes_ccm.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_att.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_att_clt.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_att_cmd.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_att_svr.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_dtm.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_ead.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_eatt.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_eddystone.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_gap.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_gattc.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_gattc_cache.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_gattc_cache_conn.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_gatts.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_gatts_lcl.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_adv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_atomic.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_cfg.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_conn.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_flow.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_hci.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_hci_cmd.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_hci_evt.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_hci_util.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_id.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_log.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_mbuf.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_misc.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_mqueue.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_periodic_sync.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_pvcy.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_resolv.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_shutdown.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_startup.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_hs_stop.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_ibeacon.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_l2cap.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_l2cap_coc.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_l2cap_sig.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_l2cap_sig_cmd.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_sm.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_sm_alg.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_sm_cmd.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_sm_lgcy.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_sm_sc.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_store.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_store_util.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/src/ble_uuid.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/store/config/src/ble_store_config.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/store/config/src/ble_store_config_conf.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/store/config/src/ble_store_nvs.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/store/ram/src/ble_store_ram.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/host/util/src/addr.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/transport/common/hci_h4/src/hci_h4.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/transport/common/hci_ipc/src/hci_ipc.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/transport/esp_ipc/src/hci_esp_ipc.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/transport/esp_ipc_legacy/src/hci_esp_ipc_legacy.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/transport/nrf5340/src/nrf5340_ble_hci.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/nimble/transport/src/transport.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/nimble/src/endian.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/nimble/src/hal_timer.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/nimble/src/mem.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/nimble/src/nimble_port.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/nimble/src/os_cputime.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/nimble/src/os_cputime_pwr2.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/nimble/src/os_mbuf.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/nimble/src/os_mempool.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/nimble/src/os_msys_init.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/npl/freertos/src/nimble_port_freertos.c.o
+Compiling .pio/build/nexxus/libe19/NimBLE-Arduino/nimble/porting/npl/freertos/src/npl_os_freertos.c.o
+Compiling .pio/build/nexxus/libe22/JPEGDEC/JPEGDEC.cpp.o
+Compiling .pio/build/nexxus/libe22/JPEGDEC/s3_simd_420.S.o
+Compiling .pio/build/nexxus/libe22/JPEGDEC/s3_simd_444.S.o
+Compiling .pio/build/nexxus/libe22/JPEGDEC/s3_simd_dequant.S.o
+Compiling .pio/build/nexxus/libb45/GFX_nexxus/Arduino_DataBus.cpp.o
+Compiling .pio/build/nexxus/libb45/GFX_nexxus/Arduino_G.cpp.o
+Compiling .pio/build/nexxus/libb45/GFX_nexxus/Arduino_GFX.cpp.o
+Compiling .pio/build/nexxus/libb45/GFX_nexxus/Arduino_OLED.cpp.o
+Compiling .pio/build/nexxus/libb45/GFX_nexxus/Arduino_TFT.cpp.o
+Compiling .pio/build/nexxus/libb45/GFX_nexxus/canvas/Arduino_Canvas.cpp.o
+Compiling .pio/build/nexxus/libb45/GFX_nexxus/databus/Arduino_ESP32QSPI.cpp.o
+Compiling .pio/build/nexxus/libb45/GFX_nexxus/display/Arduino_CO5300.cpp.o
+Compiling .pio/build/nexxus/libe70/Preferences/Preferences.cpp.o
+Compiling .pio/build/nexxus/lib59e/AsyncUDP/AsyncUDP.cpp.o
+Compiling .pio/build/nexxus/lib147/DNSServer/DNSServer.cpp.o
+Compiling .pio/build/nexxus/lib4b6/ESPmDNS/ESPmDNS.cpp.o
+Compiling .pio/build/nexxus/lib92c/Hash/PBKDF2_HMACBuilder.cpp.o
+Compiling .pio/build/nexxus/lib92c/Hash/SHA1Builder.cpp.o
+Compiling .pio/build/nexxus/lib92c/Hash/SHA2Builder.cpp.o
+Compiling .pio/build/nexxus/lib92c/Hash/SHA3Builder.cpp.o
+Compiling .pio/build/nexxus/lib4b6/Update/HttpsOTAUpdate.cpp.o
+Compiling .pio/build/nexxus/lib4b6/Update/Updater.cpp.o
+Compiling .pio/build/nexxus/lib4b6/Update/Updater_Signing.cpp.o
+Compiling .pio/build/nexxus/lib1ce/WebServer/Parsing.cpp.o
+Compiling .pio/build/nexxus/lib1ce/WebServer/WebServer.cpp.o
+Compiling .pio/build/nexxus/lib1ce/WebServer/detail/mimetable.cpp.o
+Compiling .pio/build/nexxus/lib1ce/WebServer/middleware/AuthenticationMiddleware.cpp.o
+Compiling .pio/build/nexxus/lib1ce/WebServer/middleware/CorsMiddleware.cpp.o
+Compiling .pio/build/nexxus/lib1ce/WebServer/middleware/LoggingMiddleware.cpp.o
+Compiling .pio/build/nexxus/lib1ce/WebServer/middleware/MiddlewareChain.cpp.o
+Compiling .pio/build/nexxus/lib4b3/ESP_I2S/ESP_I2S.cpp.o
+Compiling .pio/build/nexxus/lib411/ES8311/es8311.c.o
+Compiling .pio/build/nexxus/libd81/QR_nexxus/qr_nexxus.c.o
+Compiling .pio/build/nexxus/src/ble.cpp.o
+Compiling .pio/build/nexxus/src/cerveau.cpp.o
+Compiling .pio/build/nexxus/src/http.cpp.o
+Compiling .pio/build/nexxus/src/main.cpp.o
+src/ble.cpp: In function 'void ble::demarrer(const String&)':
+src/ble.cpp:100:13: warning: 'bool NimBLEService::start()' is deprecated: NimBLEService::start() has no effect. Services are started when the server is started. [-Wdeprecated-declarations]
+  100 |   svc->start();
+      |   ~~~~~~~~~~^~
+In file included from .pio/libdeps/nexxus/NimBLE-Arduino/src/NimBLEDevice.h:299,
+                 from src/ble.cpp:3:
+.pio/libdeps/nexxus/NimBLE-Arduino/src/NimBLEService.h:51:10: note: declared here
+   51 |     bool start() { return true; }
+      |          ^~~~~
+Compiling .pio/build/nexxus/src/reglages.cpp.o
+src/cerveau.cpp: In function 'void tacheSon(void*)':
+src/cerveau.cpp:53:5: warning: '--' expression of 'volatile'-qualified type is deprecated [-Wvolatile]
+   53 |     sonsEnAttente--;
+      |     ^~~~~~~~~~~~~
+src/cerveau.cpp: In function 'bool parlerTexte(const String&, uint32_t, std::function<void()>)':
+src/cerveau.cpp:111:5: warning: '++' expression of 'volatile'-qualified type is deprecated [-Wvolatile]
+  111 |     sonsEnAttente++;
+      |     ^~~~~~~~~~~~~
+src/cerveau.cpp: In function 'void envoyer(TypeDemande, const String&)':
+src/cerveau.cpp:396:18: warning: '++' expression of 'volatile'-qualified type is deprecated [-Wvolatile]
+  396 |   uint32_t g = ++generation;
+      |                  ^~~~~~~~~~
+src/cerveau.cpp: In function 'void cerveau::taire()':
+src/cerveau.cpp:410:5: warning: '++' expression of 'volatile'-qualified type is deprecated [-Wvolatile]
+  410 |   ++generation;
+      |     ^~~~~~~~~~
+Compiling .pio/build/nexxus/src/reseau.cpp.o
+Compiling .pio/build/nexxus/src/son.cpp.o
+Compiling .pio/build/nexxus/src/ui.cpp.o
+Building .pio/build/nexxus/bootloader.bin
+esptool v5.3.0
+Creating ESP32-S3 image...
+Merged 2 ELF sections.
+Successfully created ESP32-S3 image.
+Generating partitions .pio/build/nexxus/partitions.bin
+Compiling .pio/build/nexxus/FrameworkArduino/ColorFormat.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/Esp.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/FirmwareMSC.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/FunctionalInterrupt.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/HEXBuilder.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/HWCDC.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/HardwareSerial.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/HashBuilder.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/IPAddress.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/MD5Builder.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/MacAddress.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/Print.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/Stream.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/StreamString.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/StringUtils.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/Tone.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/USB.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/USBCDC.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/USBMSC.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/WMath.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/WString.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/base64.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/cbuf.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/chip-debug-report.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-adc.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-bt.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-cpu.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-dac.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-gpio.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-hosted.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-i2c-ng.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-i2c-slave.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-i2c.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-ldo.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-ledc.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-log-wrapper.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-matrix.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-misc.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-periman.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-psram.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-rgb-led.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-rmt.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-sigmadelta.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-spi.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-time.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-timer.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-tinyusb.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-touch-ng.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-touch.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/esp32-hal-uart.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/firmware_msc_fat.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/freertos_stats.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/idf_openthread_mpool_wrapper.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/libb64/cdecode.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/libb64/cencode.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/main.cpp.o
+Compiling .pio/build/nexxus/FrameworkArduino/stdlib_noniso.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/wiring_pulse.c.o
+Compiling .pio/build/nexxus/FrameworkArduino/wiring_shift.c.o
+Archiving .pio/build/nexxus/libFrameworkArduino.a
+Indexing .pio/build/nexxus/libFrameworkArduino.a
+Linking .pio/build/nexxus/firmware.elf
+                            Memory Type Usage Summary                             
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Memory Type/Section ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Flash Code          │      2017352 │          │                │               │
+│    .text            │      2017352 │          │                │               │
+│ Flash Data          │       784264 │          │                │               │
+│    .rodata          │       784008 │          │                │               │
+│    .appdesc         │          256 │          │                │               │
+│ DIRAM               │       178427 │    52.21 │         163333 │        341760 │
+│    .text            │        84347 │    24.68 │                │               │
+│    .bss             │        68632 │    20.08 │                │               │
+│    .data            │        25448 │     7.45 │                │               │
+│ IRAM                │        16384 │    100.0 │              0 │         16384 │
+│    .text            │        15356 │    93.73 │                │               │
+│    .vectors         │         1028 │     6.27 │                │               │
+└─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+Total image size: 2927795 bytes (.bin may be padded larger)
+Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size. The total external RAM size is not included either, because the amount of RAM connected to the chip is detected at boot and is not known during the build.
+Retrieving maximum program size .pio/build/nexxus/firmware.elf
+Checking size .pio/build/nexxus/firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [===       ]  28.7% (used 94080 bytes from 327680 bytes)
+Flash: [====      ]  44.7% (used 2927539 bytes from 6553600 bytes)
+Building .pio/build/nexxus/firmware.bin with action:
+  $ERASETOOL --chip esp32s3 elf2image --flash-mode ${__get_board_flash_mode(__env__)} --flash-freq ${__get_board_f_image(__env__)} --flash-size 16MB --elf-sha256-offset 0xb0 -o "$TARGET" "$SOURCES"
+Building .pio/build/nexxus/firmware.bin
+esptool v5.3.0
+Creating ESP32-S3 image...
+Merged 2 ELF sections.
+Successfully created ESP32-S3 image.
+Creating binary "firmware.factory.bin" with:
+    Offset   | File
+ -  0x0000   | bootloader.bin
+ -  0x8000   | partitions.bin
+ -  0xe000   | boot_app0.bin
+ -  0x10000  | firmware.bin
+Successfully created combined binary image.
+========================= [SUCCESS] Took 95.17 seconds =========================
